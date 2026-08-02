@@ -20,7 +20,7 @@ namespace hako::robots::actuator::impl
         mjData* data_;
         int actuator_id_ {-1};
         JointActuatorConfig config_;
-        hako::robots::sensor::common::UpdateScheduler scheduler_;
+        hako::robots::common::UpdateScheduler scheduler_;
 
         static const char* ActuatorTypeName(ActuatorType type)
         {
