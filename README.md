@@ -94,7 +94,7 @@ MuJoCo の `mj_objectVelocity` に渡す `mjOBJ_BODY` は **body の慣性主軸
 サンプル群（`main_for_sample/`、`robots/tb3`、`robots/forklift`）、`controller/`、`viewer/`、
 `rd_lite/`、`hakoniwa/*RigidBody`。これらはロボット固有・サンプル固有で、コア基盤ではない。
 
-`sensors/camera/` は**センサ**なので `hakoniwa-mujoco-sensor` 側に移設する（未実施）。
+`sensors/camera/` は**センサ**なので `hakoniwa-mujoco-sensor` 側に移設した（2026-08 完了）。
 
 ---
 
@@ -132,7 +132,8 @@ cmake --build build
 
 ## ライセンス
 
-**[PolyForm Noncommercial License 1.0.0](./LICENSE)** — 利用は非営利目的に限ります。
+**[PolyForm Noncommercial License 1.0.0](./LICENSE)**（licensor: **hakoniwa community**）
+— 利用は非営利目的に限ります。
 商用利用については別途ご相談ください。
 
 上表の第三者成果物はそれぞれの元ライセンスに従います（本ライセンスは上書きしません）。
