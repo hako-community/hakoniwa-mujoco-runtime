@@ -5,7 +5,7 @@
 が依存する**下位レイヤ**。
 
 `hakoniwa-mujoco-robots` から「センサではないが MuJoCo を使うために必要なもの」を切り出したリポジトリ。
-`hakoniwa-mujoco-robots` はメンテナンスが止まる見込みのため、その置き換えとして
+`hakoniwa-mujoco-robots` のメンテナンス状況に依存しないようにするため、その置き換えとして
 `hakoniwa-mujoco-sensor`（センサ）と本リポ（コア）の 2 つに再編した。
 
 ```
