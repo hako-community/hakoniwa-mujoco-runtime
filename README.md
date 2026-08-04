@@ -1,6 +1,8 @@
 # hakoniwa-mujoco-runtime
 
-MuJoCo バックエンド実装と箱庭アセット基盤。`hakoniwa-mujoco-sensor` が依存する**下位レイヤ**。
+箱庭（[Hakoniwa](https://github.com/toppers/hakoniwa)）向けの **MuJoCo バックエンド実装と
+箱庭アセット基盤**。[`hakoniwa-mujoco-sensor`](https://github.com/hako-community/hakoniwa-mujoco-sensor)
+が依存する**下位レイヤ**。
 
 `hakoniwa-mujoco-robots` から「センサではないが MuJoCo を使うために必要なもの」を切り出したリポジトリ。
 `hakoniwa-mujoco-robots` はメンテナンスが止まる見込みのため、その置き換えとして
@@ -17,6 +19,10 @@ hakoniwa-core / hakoniwa_pdu_endpoint / MuJoCo
 ```
 
 **依存は一方向。** 本リポは `sensors/**` を一切参照しない（機械的に検証可能）。
+
+**利用側の例**: [`hakoniwa-humanoid`](https://github.com/hako-community/hakoniwa-humanoid)
+（31-DoF ヒューマノイドの PLANT）が本リポと sensor を submodule として link し、
+MuJoCo 1kHz の物理ループを箱庭アセットとして動かしている。
 
 ---
 
@@ -107,3 +113,26 @@ cmake --build build
 
 `-DHAKO_RUNTIME_BUILD_ASSET=OFF` にすると箱庭アセット層（`hako_asset.h` / `hako_conductor.h` 依存）
 を外し、MuJoCo バックエンドだけのヘッダライブラリとして使える。
+
+
+---
+
+## 由来と第三者成果物
+
+`hakoniwa-mujoco-robots`（同一著者）から「センサーではないが MuJoCo を使うために必要なもの」を
+切り出したリポジトリ。移設時の変更点は上記「`hakoniwa-mujoco-robots` からの変更点」を参照。
+
+| 対象 | 扱い |
+|---|---|
+| [MuJoCo](https://github.com/google-deepmind/mujoco)（Apache-2.0） | ヘッダを include するのみ（同梱しない。リンクは最終実行体の責務） |
+| [nlohmann/json](https://github.com/nlohmann/json)（MIT） | ヘッダを include するのみ（同梱しない） |
+| hakoniwa-core / hakoniwa_pdu_endpoint | 実行時・リンク時依存。別途インストール |
+
+---
+
+## ライセンス
+
+**[PolyForm Noncommercial License 1.0.0](./LICENSE)** — 利用は非営利目的に限ります。
+商用利用については別途ご相談ください。
+
+上表の第三者成果物はそれぞれの元ライセンスに従います（本ライセンスは上書きしません）。
