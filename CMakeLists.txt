@@ -27,6 +27,27 @@ set(HAKONIWA_INSTALL_PREFIX "/usr/local/hakoniwa" CACHE PATH "hakoniwa-core inst
 set(HAKONIWA_PDU_ENDPOINT_PREFIX "" CACHE PATH "hakoniwa_pdu_endpoint install prefix")
 set(NLOHMANN_JSON_INCLUDE_DIR "" CACHE PATH "Directory containing nlohmann/json.hpp")
 
+# このアーカイブは libmujoco をリンクしない（リンクは最終実行体の責務）。
+# それでも **どの版のヘッダで physics_impl.hpp をコンパイルしたか** は効く:
+# ヘッダと、最終実行体がリンクする libmujoco の版が違えば mjModel/mjData の
+# レイアウトがずれ、ビルドは通って実行時に SEGV する。版の選択が 2 リポジトリに
+# またがる分、上位レイヤ単独の不一致より原因を追いにくい。
+# そこで探索順は
+#   1) include と lib が揃っている root（＝リリース tarball）。上位の
+#      hakoniwa-mujoco-sensor と同じ既定に着地させ、レイヤ間で版を揃える。
+#   2) ヘッダしか無い場所
+if(NOT MUJOCO_INCLUDE_DIR)
+    foreach(_root
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../.cache/deps/mujoco_bin-src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../../.cache/deps/mujoco_bin-src"
+        "/usr/local"
+        "/opt/mujoco")
+        if(EXISTS "${_root}/include/mujoco/mujoco.h" AND EXISTS "${_root}/lib/libmujoco.so")
+            set(MUJOCO_INCLUDE_DIR "${_root}/include")
+            break()
+        endif()
+    endforeach()
+endif()
 if(NOT MUJOCO_INCLUDE_DIR)
     foreach(_cand "/usr/local/include")
         if(EXISTS "${_cand}/mujoco/mujoco.h")
@@ -37,6 +58,48 @@ if(NOT MUJOCO_INCLUDE_DIR)
 endif()
 if(NOT MUJOCO_INCLUDE_DIR)
     message(FATAL_ERROR "MUJOCO_INCLUDE_DIR を指定してください（mujoco/mujoco.h のある場所）")
+endif()
+
+# ヘッダの版を必ず表示する。レイヤをまたいだ突き合わせは、まずこれが見えないと
+# できない（上位の hakoniwa-mujoco-sensor も同じ形式で表示する）。
+# 隣に libmujoco.so があるならその場で版一致まで検査し、違えば configure を止める。
+set(MUJOCO_LIB_DIR "" CACHE PATH "Directory containing libmujoco.so (版一致の検査に使う。リンクはしない)")
+if(EXISTS "${MUJOCO_INCLUDE_DIR}/mujoco/mujoco.h")
+    file(STRINGS "${MUJOCO_INCLUDE_DIR}/mujoco/mujoco.h" _mj_ver_line
+         REGEX "^#define +mjVERSION_HEADER +[0-9]+")
+    if(_mj_ver_line MATCHES "([0-9]+)$")
+        set(_mj_v "${CMAKE_MATCH_1}")
+        math(EXPR _mj_major "${_mj_v} / 1000000")
+        math(EXPR _mj_minor "(${_mj_v} / 1000) % 1000")
+        math(EXPR _mj_patch "${_mj_v} % 1000")
+        set(MUJOCO_HEADER_VERSION "${_mj_major}.${_mj_minor}.${_mj_patch}")
+        message(STATUS "MuJoCo header version: ${MUJOCO_HEADER_VERSION} (${MUJOCO_INCLUDE_DIR})")
+
+        if(NOT MUJOCO_LIB_DIR)
+            get_filename_component(_mj_root "${MUJOCO_INCLUDE_DIR}" DIRECTORY)
+            if(EXISTS "${_mj_root}/lib/libmujoco.so")
+                set(MUJOCO_LIB_DIR "${_mj_root}/lib")
+            endif()
+        endif()
+        if(MUJOCO_LIB_DIR AND EXISTS "${MUJOCO_LIB_DIR}/libmujoco.so")
+            get_filename_component(_mj_real "${MUJOCO_LIB_DIR}/libmujoco.so" REALPATH)
+            if(_mj_real MATCHES "libmujoco\\.so\\.([0-9]+\\.[0-9]+\\.[0-9]+)")
+                set(_mj_lib_ver "${CMAKE_MATCH_1}")
+                if(NOT MUJOCO_HEADER_VERSION VERSION_EQUAL _mj_lib_ver)
+                    message(FATAL_ERROR
+                        "MuJoCo のヘッダとライブラリの版が一致しません。\n"
+                        "  header ${MUJOCO_HEADER_VERSION}: ${MUJOCO_INCLUDE_DIR}\n"
+                        "  lib    ${_mj_lib_ver}: ${_mj_real}\n"
+                        "このヘッダで組んだ成果物を、その libmujoco をリンクする実行体に"
+                        "混ぜると実行時に SEGV します。"
+                        "include と lib を同じ root から組で指定してください:\n"
+                        "  cmake -S . -B build -DMUJOCO_INCLUDE_DIR=<root>/include "
+                        "-DMUJOCO_LIB_DIR=<root>/lib")
+                endif()
+                message(STATUS "MuJoCo version check: header/lib とも ${_mj_lib_ver}")
+            endif()
+        endif()
+    endif()
 endif()
 
 # --- ライブラリ本体 -----------------------------------------------------------
