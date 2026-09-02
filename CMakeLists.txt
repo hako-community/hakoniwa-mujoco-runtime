@@ -20,12 +20,56 @@ project(hakoniwa-mujoco-runtime
 #   - 箱庭アセット基盤         : config/asset_manifest, runtime/hakoniwa_asset_lifecycle
 # =============================================================================
 
-option(HAKO_RUNTIME_BUILD_ASSET "Build Hakoniwa asset layer (needs hakoniwa-core / pdu-endpoint)" ON)
-
 set(MUJOCO_INCLUDE_DIR "" CACHE PATH "Directory containing mujoco/mujoco.h")
 set(HAKONIWA_INSTALL_PREFIX "/usr/local/hakoniwa" CACHE PATH "hakoniwa-core install prefix")
 set(HAKONIWA_PDU_ENDPOINT_PREFIX "" CACHE PATH "hakoniwa_pdu_endpoint install prefix")
+
+# ★★★★ 2026-09-02: **既定を「見つかったら ON」に変えた**（それまでは無条件 ON）。
+#   ★★★ `hakoniwa_asset_lifecycle.cpp` は `hakoniwa/pdu/endpoint.hpp` を要求するが、
+#     これは `hakoniwa_pdu_endpoint` を別途入れないと存在しない。既定 ON だったので、
+#     ★★★★ **このリポジトリは単体では configure も通らずビルドが落ちていた。**
+#   ★★ 気づかれなかったのは、上位の `hakoniwa-mujoco-sensor` が
+#     **runtime の include ディレクトリしか使わず、ライブラリを組まない**ため。
+#     ＝ **単体ビルドを誰も 1 度も通していなかった。**
+#   ★ 明示的に -DHAKO_RUNTIME_BUILD_ASSET=ON と渡せば従来どおり強制できる。
+set(_hako_asset_default OFF)
+foreach(_p "${HAKONIWA_PDU_ENDPOINT_PREFIX}" "${HAKONIWA_INSTALL_PREFIX}")
+    if(_p AND EXISTS "${_p}/include/hakoniwa/pdu/endpoint.hpp")
+        set(_hako_asset_default ON)
+        break()
+    endif()
+endforeach()
+option(HAKO_RUNTIME_BUILD_ASSET
+       "Build Hakoniwa asset layer (needs hakoniwa-core / pdu-endpoint)" ${_hako_asset_default})
+if(HAKO_RUNTIME_BUILD_ASSET)
+    message(STATUS "箱庭アセット層: 有効")
+else()
+    message(STATUS "箱庭アセット層: 無効（hakoniwa/pdu/endpoint.hpp が無い）"
+                   " -> -DHAKONIWA_PDU_ENDPOINT_PREFIX=<prefix> で有効にできる")
+endif()
 set(NLOHMANN_JSON_INCLUDE_DIR "" CACHE PATH "Directory containing nlohmann/json.hpp")
+# ★★★★ 2026-09-02: **未指定のときは自前のもの（submodule）を見る。**
+#   ★★★ それまでは探索そのものが無く、`-DNLOHMANN_JSON_INCLUDE_DIR=` を渡さないと
+#     JSON を読む機能が**黙って落ちた**（上位の sensor が渡してくれるので気づけない）。
+#     ★ このリポジトリを単体で configure したときにこそ効く。
+if(NOT NLOHMANN_JSON_INCLUDE_DIR)
+    foreach(_cand
+        "${CMAKE_CURRENT_SOURCE_DIR}/external_library/nolman/single_include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/nlohmann-json/single_include"
+        "/usr/local/include"
+        "/usr/include")
+        if(EXISTS "${_cand}/nlohmann/json.hpp")
+            set(NLOHMANN_JSON_INCLUDE_DIR "${_cand}")
+            break()
+        endif()
+    endforeach()
+endif()
+if(NLOHMANN_JSON_INCLUDE_DIR)
+    message(STATUS "nlohmann/json: ${NLOHMANN_JSON_INCLUDE_DIR}")
+else()
+    message(WARNING "nlohmann/json.hpp が見つかりません（JSON 設定を読む機能はビルドできません）。"
+                    " external_library/setup.sh を走らせてください。")
+endif()
 
 # このアーカイブは libmujoco をリンクしない（リンクは最終実行体の責務）。
 # それでも **どの版のヘッダで physics_impl.hpp をコンパイルしたか** は効く:
@@ -38,8 +82,11 @@ set(NLOHMANN_JSON_INCLUDE_DIR "" CACHE PATH "Directory containing nlohmann/json.
 #   2) ヘッダしか無い場所
 if(NOT MUJOCO_INCLUDE_DIR)
     foreach(_root
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../.cache/deps/mujoco_bin-src"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../../.cache/deps/mujoco_bin-src"
+        # ★★★★ 2026-09-02: **このリポジトリが自分で持つものを最優先**（setup.sh が置く）。
+        #   ★★★ それまでの先頭は `../../.cache/deps/mujoco_bin-src` で、実体は
+        #     **ドローンの木の外にある別プロジェクト（ヒューマノイド）のキャッシュ**だった。
+        #     あちらを掃除した瞬間にこのリポジトリはビルド不能になる。**単体で成り立たせる。**
+        "${CMAKE_CURRENT_SOURCE_DIR}/external_library/mujoco"
         "/usr/local"
         "/opt/mujoco")
         if(EXISTS "${_root}/include/mujoco/mujoco.h" AND EXISTS "${_root}/lib/libmujoco.so")
