@@ -78,5 +78,6 @@ namespace hako::robots::runtime
         std::atomic_bool ready_ {false};
         std::atomic_bool endpoint_opened_ {false};
         std::atomic_bool conductor_started_ {false};
+        std::atomic_bool reset_received_ {false};
     };
 }

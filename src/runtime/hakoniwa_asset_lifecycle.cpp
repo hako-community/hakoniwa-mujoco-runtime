@@ -1,6 +1,8 @@
 #include "runtime/hakoniwa_asset_lifecycle.hpp"
 
 #include <iostream>
+#include <chrono>
+#include <thread>
 #include <utility>
 
 #include "hako_conductor.h"
@@ -116,9 +118,20 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAssetInternal(
         return false;
     }
 
-    const int start_result = no_wait
-        ? hako_asset_start_no_wait(StaticShouldStop)
-        : hako_asset_start();
+    int start_result = 0;
+    do {
+        reset_received_.store(false);
+        start_result = no_wait
+            ? hako_asset_start_no_wait(StaticShouldStop)
+            : hako_asset_start();
+        // A manual-timing loop returns after the core's Stop/Reset event.
+        // Re-enter Start in the same process so the next episode can run.
+        if (no_wait && reset_received_.load() && ShouldStop() == 0) {
+            // Asset callbacks acknowledge Reset before the master finishes
+            // Resetting -> Stopped. Starting immediately is rejected with EINVAL.
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+    } while (no_wait && reset_received_.exchange(false) && ShouldStop() == 0);
     if (start_result != 0) {
         if (error_message != nullptr) {
             *error_message = std::string(no_wait ? "hako_asset_start_no_wait() returns " : "hako_asset_start() returns ")
@@ -177,7 +190,9 @@ int HakoniwaAssetLifecycle::OnManualTiming()
 int HakoniwaAssetLifecycle::OnReset()
 {
     if (reset_) {
-        return reset_();
+        const int result = reset_();
+        if (result == 0) reset_received_.store(true);
+        return result;
     }
     return 0;
 }

@@ -20,8 +20,15 @@ project(hakoniwa-mujoco-runtime
 #   - 箱庭アセット基盤         : config/asset_manifest, runtime/hakoniwa_asset_lifecycle
 # =============================================================================
 
-set(MUJOCO_INCLUDE_DIR "" CACHE PATH "Directory containing mujoco/mujoco.h")
-set(HAKONIWA_INSTALL_PREFIX "/usr/local/hakoniwa" CACHE PATH "hakoniwa-core install prefix")
+set(MUJOCO_ROOT "$ENV{MUJOCO_ROOT}" CACHE PATH "MuJoCo root containing include/ and lib/ or bin/")
+set(MUJOCO_INCLUDE_DIR "$ENV{MUJOCO_INCLUDE_DIR}" CACHE PATH "Directory containing mujoco/mujoco.h")
+set(HAKONIWA_INSTALL_PREFIX "" CACHE PATH "hakoniwa-core install prefix")
+if(NOT HAKONIWA_INSTALL_PREFIX AND DEFINED ENV{HAKO_CORE_INC_PATH})
+    get_filename_component(HAKONIWA_INSTALL_PREFIX "$ENV{HAKO_CORE_INC_PATH}" DIRECTORY)
+endif()
+if(NOT HAKONIWA_INSTALL_PREFIX AND UNIX AND NOT APPLE)
+    set(HAKONIWA_INSTALL_PREFIX "/usr/local/hakoniwa")
+endif()
 set(HAKONIWA_PDU_ENDPOINT_PREFIX "" CACHE PATH "hakoniwa_pdu_endpoint install prefix")
 
 # ★★★★ 2026-09-02: **既定を「見つかったら ON」に変えた**（それまでは無条件 ON）。
@@ -80,6 +87,9 @@ endif()
 #   1) include と lib が揃っている root（＝リリース tarball）。上位の
 #      hakoniwa-mujoco-sensor と同じ既定に着地させ、レイヤ間で版を揃える。
 #   2) ヘッダしか無い場所
+if(NOT MUJOCO_INCLUDE_DIR AND MUJOCO_ROOT)
+    set(MUJOCO_INCLUDE_DIR "${MUJOCO_ROOT}/include")
+endif()
 if(NOT MUJOCO_INCLUDE_DIR)
     foreach(_root
         # ★★★★ 2026-09-02: **このリポジトリが自分で持つものを最優先**（setup.sh が置く）。
@@ -89,7 +99,7 @@ if(NOT MUJOCO_INCLUDE_DIR)
         "${CMAKE_CURRENT_SOURCE_DIR}/external_library/mujoco"
         "/usr/local"
         "/opt/mujoco")
-        if(EXISTS "${_root}/include/mujoco/mujoco.h" AND EXISTS "${_root}/lib/libmujoco.so")
+        if(EXISTS "${_root}/include/mujoco/mujoco.h")
             set(MUJOCO_INCLUDE_DIR "${_root}/include")
             break()
         endif()
@@ -110,7 +120,7 @@ endif()
 # ヘッダの版を必ず表示する。レイヤをまたいだ突き合わせは、まずこれが見えないと
 # できない（上位の hakoniwa-mujoco-sensor も同じ形式で表示する）。
 # 隣に libmujoco.so があるならその場で版一致まで検査し、違えば configure を止める。
-set(MUJOCO_LIB_DIR "" CACHE PATH "Directory containing libmujoco.so (版一致の検査に使う。リンクはしない)")
+set(MUJOCO_LIB_DIR "$ENV{MUJOCO_LIB_DIR}" CACHE PATH "Directory containing the MuJoCo library (version check only)")
 if(EXISTS "${MUJOCO_INCLUDE_DIR}/mujoco/mujoco.h")
     file(STRINGS "${MUJOCO_INCLUDE_DIR}/mujoco/mujoco.h" _mj_ver_line
          REGEX "^#define +mjVERSION_HEADER +[0-9]+")
@@ -124,8 +134,11 @@ if(EXISTS "${MUJOCO_INCLUDE_DIR}/mujoco/mujoco.h")
 
         if(NOT MUJOCO_LIB_DIR)
             get_filename_component(_mj_root "${MUJOCO_INCLUDE_DIR}" DIRECTORY)
-            if(EXISTS "${_mj_root}/lib/libmujoco.so")
+            if(EXISTS "${_mj_root}/lib" OR EXISTS "${_mj_root}/bin")
                 set(MUJOCO_LIB_DIR "${_mj_root}/lib")
+                if(NOT EXISTS "${MUJOCO_LIB_DIR}")
+                    set(MUJOCO_LIB_DIR "${_mj_root}/bin")
+                endif()
             endif()
         endif()
         if(MUJOCO_LIB_DIR AND EXISTS "${MUJOCO_LIB_DIR}/libmujoco.so")
