@@ -132,7 +132,7 @@ cmake --build build
 
 ## ライセンス
 
-**[PolyForm Noncommercial License 1.0.0](./LICENSE)**（licensor: **hakoniwa community**）
+**[PolyForm Noncommercial License 1.0.0](./LICENSE)**（licensor: **Hakoniwa Community**）
 — 利用は非営利目的に限ります。
 商用利用については別途ご相談ください。
 
