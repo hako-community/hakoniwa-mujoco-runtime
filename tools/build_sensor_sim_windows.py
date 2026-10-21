@@ -16,14 +16,17 @@ def main():
     parser.add_argument('--workspace', type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument('--core-sdk', type=Path, required=True)
     parser.add_argument('--endpoint-sdk', type=Path, required=True)
-    parser.add_argument('--deps', type=Path, required=True, help='Installed MuJoCo/GLFW/nlohmann prefix')
+    parser.add_argument('--deps', type=Path, required=True, help='Installed GLFW prefix (vcpkg installed/x64-windows)')
+    parser.add_argument('--mujoco-root', type=Path, required=True,
+                        help='Official MuJoCo release (include/, lib/, bin/) of the mujoco.lock version')
     parser.add_argument('--json-include', type=Path, help='Directory containing nlohmann/json.hpp (read only)')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--vsdevcmd', type=Path, default=Path(
         'C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/Tools/VsDevCmd.bat'))
     args = parser.parse_args()
-    root, core, endpoint, deps = (x.resolve(strict=True) for x in
-                                 (args.workspace, args.core_sdk, args.endpoint_sdk, args.deps))
+    root, core, endpoint, deps, mujoco = (x.resolve(strict=True) for x in
+                                         (args.workspace, args.core_sdk, args.endpoint_sdk, args.deps,
+                                          args.mujoco_root))
     output = args.output.resolve()
     if 'third_party' in output.parts or not output.is_relative_to(root):
         parser.error('output must be inside the workspace and outside third_party')
@@ -33,8 +36,8 @@ def main():
     common = [f'-DCMAKE_PREFIX_PATH={core};{endpoint};{deps}',
               f'-DHAKONIWA_INSTALL_PREFIX={core}', f'-DHAKONIWA_PDU_ENDPOINT_PREFIX={endpoint}',
               f'-DMJRUNTIME_DIR={runtime}', f'-DMJSENSOR_DIR={sensor}',
-              f'-DMUJOCO_ROOT={deps}', f'-DMUJOCO_INCLUDE_DIR={deps}/include',
-              f'-DMUJOCO_LIB={deps}/lib/mujoco.lib',
+              f'-DMUJOCO_ROOT={mujoco}', f'-DMUJOCO_INCLUDE_DIR={mujoco}/include',
+              f'-DMUJOCO_LIB={mujoco}/lib/mujoco.lib',
               f'-DNLOHMANN_JSON_INCLUDE_DIR={json_include}',
               '-DHAKO_RUNTIME_BUILD_ASSET=ON', '-DCMAKE_BUILD_TYPE=Release',
               '-DCMAKE_CXX_FLAGS=/DWIN32 /D_WINDOWS /DNOMINMAX /EHsc /utf-8']

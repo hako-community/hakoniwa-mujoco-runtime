@@ -4,6 +4,8 @@ third_party is only read: each repository's committed HEAD is exported with
 `git archive` (local edits are excluded) and every build tree, install tree and
 pip target lives under --output. The upstream install rules that write outside
 the prefix (/etc/hakoniwa, Python site-packages) are redirected with DESTDIR.
+MuJoCo is the official Windows release pinned in external_library/mujoco.lock
+(sha256 checked), not a vcpkg port, so the header and DLL always match the lock.
 """
 import argparse
 import hashlib
@@ -15,10 +17,13 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import urllib.request
+import zipfile
 
 VCPKG_URL = 'https://github.com/microsoft/vcpkg.git'
-VCPKG_COMMIT = '319504a5326aa870edde46438c5455fa76305a56'  # MuJoCo 3.10.0, GLFW 3.5.1, Boost 1.92.0
-VCPKG_PORTS = ['boost-asio', 'boost-beast', 'mujoco', 'glfw3']
+VCPKG_COMMIT = '319504a5326aa870edde46438c5455fa76305a56'  # GLFW 3.5.1, Boost 1.92.0
+VCPKG_PORTS = ['boost-asio', 'boost-beast', 'glfw3']  # MuJoCo comes from mujoco.lock, never from vcpkg
+MUJOCO_LOCK = Path(__file__).resolve().parents[1] / 'external_library/mujoco.lock'
 PIP_PACKAGES = ['hakoniwa-pdu==1.6.9', 'cffi==2.1.1', 'pycparser==3.0']
 
 
@@ -52,6 +57,36 @@ def undrive(path):
     return Path(*Path(path).parts[1:])
 
 
+def mujoco_lock():
+    entries = {}
+    for line in MUJOCO_LOCK.read_text(encoding='utf-8').splitlines():
+        key, sep, value = line.partition('=')
+        if sep and not key.lstrip().startswith('#'):
+            entries[key.strip()] = value.strip()
+    return entries['version'], entries['windows_x86_64.url'], entries['windows_x86_64.sha256']
+
+
+def mujoco_header_version(root):
+    """'3.9.0' from mjVERSION_HEADER (3009000) of root/include/mujoco/mujoco.h."""
+    for line in (root / 'include/mujoco/mujoco.h').read_text(encoding='utf-8').splitlines():
+        if line.startswith('#define mjVERSION_HEADER'):
+            n = int(line.split()[2])
+            return f'{n // 1000000}.{n // 1000 % 1000}.{n % 1000}'
+    raise RuntimeError('mjVERSION_HEADER not found under ' + str(root))
+
+
+def fetch_mujoco(dest, url, sha256):
+    """Download the official zip, check the lock's sha256 and extract it (no top-level folder)."""
+    print('[GET]', url, flush=True)
+    with urllib.request.urlopen(url) as r:
+        data = r.read()
+    actual = hashlib.sha256(data).hexdigest()
+    if actual != sha256:
+        raise RuntimeError(f'MuJoCo sha256 mismatch: {actual} != {sha256}')
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        z.extractall(dest)
+
+
 def msvc(script, vsdevcmd, lines):
     body = ['@echo off', 'call ' + quote(vsdevcmd) + ' -arch=x64 -host_arch=x64',
             'if errorlevel 1 exit /b 1']
@@ -68,6 +103,8 @@ def main():
     p.add_argument('--json-root', type=Path, required=True, help='nlohmann-json checkout (read only)')
     p.add_argument('--output', type=Path, required=True, help='New directory for sources, builds and the SDK')
     p.add_argument('--vcpkg-root', type=Path, help='Existing vcpkg to reuse; default clones a pinned one')
+    p.add_argument('--mujoco-root', type=Path,
+                   help='Existing official MuJoCo of the mujoco.lock version to reuse; default downloads it')
     p.add_argument('--vsdevcmd', type=Path, default=Path(
         'C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/Tools/VsDevCmd.bat'))
     a = p.parse_args()
@@ -102,6 +139,17 @@ def main():
     run([vcpkg / 'vcpkg.exe', 'install', *[f'{port}:x64-windows' for port in VCPKG_PORTS],
          '--disable-metrics'])
     toolchain = vcpkg / 'scripts/buildsystems/vcpkg.cmake'
+
+    # 2b. MuJoCo (official release of the locked version; header, import lib and DLL as one pair).
+    mj_version, mj_url, mj_sha256 = mujoco_lock()
+    mujoco = a.mujoco_root.resolve(strict=True) if a.mujoco_root else out / f'mujoco-{mj_version}'
+    if not a.mujoco_root:
+        fetch_mujoco(mujoco, mj_url, mj_sha256)
+    if mujoco_header_version(mujoco) != mj_version:
+        raise RuntimeError(f'MuJoCo under {mujoco} is not {mj_version}')
+    for required in ('lib/mujoco.lib', 'bin/mujoco.dll'):
+        if not (mujoco / required).is_file():
+            raise RuntimeError('MuJoCo file missing: ' + str(mujoco / required))
 
     # 3. Core: hako libraries, hako-cmd, hakopy.pyd, PDU headers and offsets.
     python = Path(sys.executable).as_posix()
@@ -171,6 +219,8 @@ def main():
     manifest = {
         'sources': commits, 'vcpkg': {'commit': vcpkg_commit, 'ports': VCPKG_PORTS,
                                       'installed': str(vcpkg / 'installed/x64-windows')},
+        'mujoco': {'version': mj_version, 'url': mj_url,
+                   'sha256': mj_sha256 if not a.mujoco_root else None, 'root': str(mujoco)},
         'pip': PIP_PACKAGES + ['hakoniwa-pdu-endpoint (exported source)'],
         'python': sys.version, 'json_root': str(json_root),
         'sha256': {f.relative_to(out).as_posix(): hashlib.sha256(f.read_bytes()).hexdigest()
@@ -178,7 +228,7 @@ def main():
     }
     (out / 'sdk/sdk_manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     print(json.dumps({'sdk': str(out / 'sdk'), 'deps': manifest['vcpkg']['installed'],
-                      'sources': commits, 'files': len(manifest['sha256'])}, indent=2))
+                      'mujoco': str(mujoco), 'sources': commits, 'files': len(manifest['sha256'])}, indent=2))
 
 
 if __name__ == '__main__':

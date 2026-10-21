@@ -1,6 +1,7 @@
 # Windows センサーシミュレーション: SDK構築と実行手順
 
 2026-09-25。WindowsネイティブのArmPi/Humanoidシミュレーション向け（SENS-006 A案）。
+2026-10-21 更新: MuJoCoをvcpkg（3.10.0）から、`external_library/mujoco.lock`で固定した公式の3.9.0に変更。
 
 ## ローカルSDKとは
 
@@ -13,7 +14,7 @@ A案ではSensorHealthを標準`std_msgs/UInt8MultiArray`に格納します（`h
 - 4つの所有リポジトリ（hakoniwa-armpi / hakoniwa-humanoid / hakoniwa-mujoco-runtime / hakoniwa-mujoco-sensor）を同じ親フォルダーに置く。ArmPiかHumanoidは`git clone --recursive`でthird_partyまで取得しておく。
 - Visual Studio 2022 のC++開発環境（MSVC x64、Windows SDK）、CMake 3.20以上、Git。
 - 64bit Python 3.12（`hakopy.pyd`はこのPythonに合わせてビルドされる）。検証にはNumPyとPillowも使う。
-- ネットワーク接続（vcpkg、CMakeのFetchContent、PyPIから取得する）。
+- ネットワーク接続（vcpkg、MuJoCoの公式リリース、CMakeのFetchContent、PyPIから取得する）。
 
 third_party（hakoniwa-core-pro、hakoniwa-pdu-registry、hakoniwa-core-cpp、hakoniwa-pdu-endpointなど）は他者のリポジトリです。以下の手順はすべて**読み取りのみ**で、third_party内でのビルド、ファイル生成、git操作は行いません。
 
@@ -32,14 +33,15 @@ python -B tools/build_hakoniwa_sdk_windows.py `
 スクリプトが行うこと:
 
 1. third_partyの各リポジトリ（hakoniwa-core-pro、hakoniwa-core-cpp、hakoniwa-pdu-registry、hakoniwa-pdu-endpoint）から、commit済みの内容（HEAD）だけを`git archive`で`<output>/src`へ書き出す。ローカルの未commit差分は含まれない。
-2. vcpkgを`<output>/vcpkg`にcloneし、固定commit（`319504a5`）でboost-asio、boost-beast、MuJoCo 3.10.0、GLFW 3.5.1をインストールする。global integrationは使わない。
+2. vcpkgを`<output>/vcpkg`にcloneし、固定commit（`319504a5`）でboost-asio、boost-beast、GLFW 3.5.1をインストールする。global integrationは使わない。
+   - MuJoCoはvcpkgから入れない（同じcommitのvcpkgは3.10.0になり、版がそろわない）。`external_library/mujoco.lock`のWindows版（公式の`mujoco-3.9.0-windows-x86_64.zip`）を取得し、lockのSHA256で照合してから`<output>/mujoco-3.9.0`に展開する。ヘッダーの`mjVERSION_HEADER`がlockの版と一致することも確認する。
 3. hakoniwa-coreをビルドする（C++20、`hako-cmd`とPythonバインディングを含む）。
    - 上流のinstall設定は、ドライブ直下の`/etc/hakoniwa`とシステムPythonのsite-packagesにも書き込む。そのため、いったんDESTDIRで仮の場所にインストールし、必要なものだけを`<output>/sdk`に集める。
    - ユーザーのPython環境は変更しない。
    - hakoniwa-core-cppの公開ヘッダー（`hako.hpp`など。自前masterが使う）も`include`に入れる。
 4. hakoniwa-pdu-endpoint（C++静的ライブラリ）をビルドし、インストールする。
 5. `hakoniwa-pdu==1.6.9`、`cffi==2.1.1`、`pycparser==3.0`と、書き出したhakoniwa-pdu-endpointのPythonパッケージを、`pip install --target`で`<output>/sdk/hakoniwa-core/python`へ入れる。
-6. 必要なファイルがそろっていることと、独自SensorHealth生成物が含まれていないことを確認する。そのうえで`import hakopy, hakoniwa_pdu, hakoniwa_pdu_endpoint`を試す。最後に、ソースのcommit、vcpkgのcommit、全ファイルのSHA256を`sdk/sdk_manifest.json`に記録する。
+6. 必要なファイルがそろっていることと、独自SensorHealth生成物が含まれていないことを確認する。そのうえで`import hakopy, hakoniwa_pdu, hakoniwa_pdu_endpoint`を試す。最後に、ソースのcommit、vcpkgのcommit、MuJoCoの版・取得元・SHA256、全ファイルのSHA256を`sdk/sdk_manifest.json`に記録する。
 
 完成するもの:
 
@@ -47,9 +49,10 @@ python -B tools/build_hakoniwa_sdk_windows.py `
 |---|---|
 | `<output>/sdk/hakoniwa-core` | core SDK（`--core-sdk`/`--sdk`に指定） |
 | `<output>/sdk/hakoniwa-pdu-endpoint` | PDU endpoint SDK（`--endpoint-sdk`） |
-| `<output>/vcpkg/installed/x64-windows` | MuJoCo/GLFW/Boost（`--deps`。DLLは`bin`） |
+| `<output>/vcpkg/installed/x64-windows` | GLFW/Boost（`--deps`。DLLは`bin`） |
+| `<output>/mujoco-3.9.0` | MuJoCo 3.9.0（`--mujoco-root`。DLLは`bin`） |
 
-Visual Studioのインストール先が既定と違う場合は`--vsdevcmd`で`VsDevCmd.bat`を指定します。既存のvcpkgを使い回す場合は`--vcpkg-root`を指定します。
+Visual Studioのインストール先が既定と違う場合は`--vsdevcmd`で`VsDevCmd.bat`を指定します。既存のvcpkgを使い回す場合は`--vcpkg-root`、取得済みの公式MuJoCo（lockと同じ版）を使い回す場合は`--mujoco-root`を指定します。使い回すvcpkgにmujocoのportが入っていると、PATHの順によっては別の版の`mujoco.dll`が読まれるので、`vcpkg remove mujoco:x64-windows`で外しておいてください。
 
 ## 2. 所有リポジトリのコードをビルド
 
@@ -57,7 +60,7 @@ Visual Studioのインストール先が既定と違う場合は`--vsdevcmd`で`
 $sdk = 'D:/work_build/hakoniwa-mujoco-runtime/build/sdk'
 python -B tools/build_sensor_sim_windows.py `
   --core-sdk "$sdk/sdk/hakoniwa-core" --endpoint-sdk "$sdk/sdk/hakoniwa-pdu-endpoint" `
-  --deps "$sdk/vcpkg/installed/x64-windows" `
+  --deps "$sdk/vcpkg/installed/x64-windows" --mujoco-root "$sdk/mujoco-3.9.0" `
   --output D:/work_build/hakoniwa-mujoco-runtime/build/sensor_sim
 ```
 
@@ -71,6 +74,7 @@ $common = @(
   '--sdk', "$sdk/sdk/hakoniwa-core",
   '--master', "$b/master/hako-runtime-master.exe",
   '--sensor-repo', 'D:/work_build/hakoniwa-mujoco-sensor',
+  '--dll-dir', "$sdk/mujoco-3.9.0/bin",
   '--dll-dir', "$sdk/vcpkg/installed/x64-windows/bin"
 )
 Set-Location D:/work_build/hakoniwa-armpi
@@ -98,7 +102,7 @@ python -B D:/work_build/hakoniwa-mujoco-sensor/tools/prepare_clean_sdk.py --sour
 ## よくある設定漏れ
 
 - `hakopy`の読み込みに失敗する: 64bitのPython 3.12で実行しているか確認する。
-- MuJoCo/GLFWのDLLが読み込めない: `--dll-dir`にvcpkgの`installed/x64-windows/bin`を指定する。
+- MuJoCo/GLFWのDLLが読み込めない: `--dll-dir`に`<output>/mujoco-3.9.0/bin`とvcpkgの`installed/x64-windows/bin`を指定する。
 - codecが見つからない: `--sensor-repo`にstandaloneのhakoniwa-mujoco-sensorを指定する。
 - 出力先がすでに存在する: 新しいフォルダーを指定する。
 
