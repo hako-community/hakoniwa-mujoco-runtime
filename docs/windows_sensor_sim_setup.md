@@ -24,11 +24,14 @@ PowerShellで実行します（`D:/work_build`は4リポジトリの親フォル
 
 ```powershell
 Set-Location D:/work_build/hakoniwa-mujoco-runtime
+git submodule update --init --recursive third_party/hakoniwa-godot
 python -B tools/build_hakoniwa_sdk_windows.py `
-  --godot-third-party D:/work_build/hakoniwa-humanoid/third_party/hakoniwa-godot/third_party `
-  --json-root D:/work_build/hakoniwa-humanoid/third_party/nlohmann-json `
   --output D:/work_build/hakoniwa-mujoco-runtime/build/sdk
 ```
+
+材料（hakoniwa-core-pro・pdu-endpoint・nlohmann/json）は、このリポジトリの中
+（サブモジュール `third_party/hakoniwa-godot`、同梱の `external_library/nlohmann-json`）から読みます（2026-11-07 から）。
+別の場所のものを使うときだけ `--godot-third-party <hakoniwa-godot/third_party>`、`--json-root <nlohmann-json>` を指定します。
 
 スクリプトが行うこと:
 
@@ -64,7 +67,7 @@ python -B tools/build_sensor_sim_windows.py `
   --output D:/work_build/hakoniwa-mujoco-runtime/build/sensor_sim
 ```
 
-兄弟配置のruntime/sensorを明示的に参照します。healthコーデックのテスト、master、ArmPi、Humanoid、センサーパイプラインのテストをビルドし、CTestを実行します。submoduleの更新やPDU生成は行いません。JSONヘッダーは既定でHumanoidのthird_partyを読むだけです。別の場所を使う場合は`--json-include`を指定します。
+兄弟配置のruntime/sensorを明示的に参照します。healthコーデックのテスト、master、ArmPi、Humanoid、センサーパイプラインのテストをビルドし、CTestを実行します。submoduleの更新やPDU生成は行いません。JSONヘッダーは既定でruntimeに同梱の`external_library/nlohmann-json`を読むだけです。別の場所を使う場合は`--json-include`を指定します。
 
 ## 3. 動作検証（実PDU送受信）
 

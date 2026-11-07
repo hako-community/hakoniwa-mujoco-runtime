@@ -32,7 +32,7 @@ def main():
         parser.error('output must be inside the workspace and outside third_party')
     runtime, sensor = root / 'hakoniwa-mujoco-runtime', root / 'hakoniwa-mujoco-sensor'
     json_include = (args.json_include.resolve(strict=True) if args.json_include else
-                    root / 'hakoniwa-humanoid/third_party/nlohmann-json/single_include')
+                    runtime / 'external_library/nlohmann-json/single_include')
     common = [f'-DCMAKE_PREFIX_PATH={core};{endpoint};{deps}',
               f'-DHAKONIWA_INSTALL_PREFIX={core}', f'-DHAKONIWA_PDU_ENDPOINT_PREFIX={endpoint}',
               f'-DMJRUNTIME_DIR={runtime}', f'-DMJSENSOR_DIR={sensor}',

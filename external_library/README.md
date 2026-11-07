@@ -15,8 +15,19 @@ configure のときに**リポジトリの外を探しに行っていた**。
 
 | 取り込む | 形 | 版 |
 |---|---|---|
-| `nolman`（nlohmann/json） | **git submodule** | `663058e7d`（★ 4 リポジトリで同一に揃えてある） |
+| `nlohmann-json`（nlohmann/json） | **ヘッダ 1 つを同梱**（`single_include/nlohmann/json.hpp` と `LICENSE.MIT`。公式のまま無改変） | **v3.12.0（`55f93686`）**。json.hpp の SHA256 は `aaf127c04cb31c406e5b04a63f1ae89369fccde6d8fa7cdda1ed4f32dfc5de63` |
 | `mujoco` | **`mujoco.lock`（版 ＋ SHA256）で取得** | 3.9.0 |
+| `../third_party/hakoniwa-godot` | **git submodule**（2026-11-07 追加） | `8f5d7d1`（中に hakoniwa-core-pro `efc9d0c`・pdu-endpoint `66bdfb8`・godot-cpp `60b5a41`） |
+
+★★★ **2026-11-07 から、共通の依存の版はこのリポジトリで決める。**
+nlohmann/json と hakoniwa-godot（Windows の SDK の材料と Godot 拡張の材料）は、
+ロボットのリポジトリ（armpi・humanoid・cobot）がそれぞれ持っていたものをここに集めた。
+sensor とロボットは、作業場所の兄弟フォルダ `../hakoniwa-mujoco-runtime/` の下を参照する。
+hakoniwa-godot は他者のリポジトリなので、**読むだけ**（編集・中でのビルドをしない。SDK は `git archive` で書き出してから建てる）。
+
+★★ nlohmann/json は 2026-11-07 に submodule をやめて同梱にした（clone を速くするため。sensor・ロボットも
+submodule で持たない）。版を上げるときは、公式リリースの `single_include/nlohmann/json.hpp` と `LICENSE.MIT` を
+そのまま差し替え、上の表の版と SHA256 を書き換える。中身を手で直さない。
 
 ## ★★★★ なぜ MuJoCo だけ submodule にしないのか
 
@@ -34,7 +45,7 @@ submodule で取れるのは**ソース**で、`libmujoco.so` は付いてこな
 external_library/setup.sh
 ```
 
-submodule を同期し、MuJoCo を lock の版で取得して SHA256 を検証する。
+同梱の nlohmann/json があることを確かめ、MuJoCo を lock の版で取得して SHA256 を検証する。
 ★ 最後に **symlink が他リポジトリを指していないこと**を断言して終わる（指していたら異常終了する）。
 
 ## ★★★ 版を上げるときは 4 リポジトリ同時に

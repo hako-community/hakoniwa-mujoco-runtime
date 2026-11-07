@@ -55,14 +55,15 @@ else()
                    " -> -DHAKONIWA_PDU_ENDPOINT_PREFIX=<prefix> で有効にできる")
 endif()
 set(NLOHMANN_JSON_INCLUDE_DIR "" CACHE PATH "Directory containing nlohmann/json.hpp")
-# ★★★★ 2026-09-02: **未指定のときは自前のもの（submodule）を見る。**
+# ★★★★ 2026-09-02: **未指定のときは自前のものを見る。**
+#   2026-11-07: submodule をやめ、v3.12.0 のヘッダを external_library/nlohmann-json に同梱した。
+#   sensor とロボットもここのものを使う（版を決める場所はこのリポジトリ 1 つ）。
 #   ★★★ それまでは探索そのものが無く、`-DNLOHMANN_JSON_INCLUDE_DIR=` を渡さないと
 #     JSON を読む機能が**黙って落ちた**（上位の sensor が渡してくれるので気づけない）。
 #     ★ このリポジトリを単体で configure したときにこそ効く。
 if(NOT NLOHMANN_JSON_INCLUDE_DIR)
     foreach(_cand
-        "${CMAKE_CURRENT_SOURCE_DIR}/external_library/nolman/single_include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/nlohmann-json/single_include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/external_library/nlohmann-json/single_include"
         "/usr/local/include"
         "/usr/include")
         if(EXISTS "${_cand}/nlohmann/json.hpp")
@@ -75,7 +76,7 @@ if(NLOHMANN_JSON_INCLUDE_DIR)
     message(STATUS "nlohmann/json: ${NLOHMANN_JSON_INCLUDE_DIR}")
 else()
     message(WARNING "nlohmann/json.hpp が見つかりません（JSON 設定を読む機能はビルドできません）。"
-                    " external_library/setup.sh を走らせてください。")
+                    " external_library/nlohmann-json/ が欠けていないか確かめてください。")
 endif()
 
 # このアーカイブは libmujoco をリンクしない（リンクは最終実行体の責務）。

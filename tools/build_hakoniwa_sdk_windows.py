@@ -23,7 +23,8 @@ import zipfile
 VCPKG_URL = 'https://github.com/microsoft/vcpkg.git'
 VCPKG_COMMIT = '319504a5326aa870edde46438c5455fa76305a56'  # GLFW 3.5.1, Boost 1.92.0
 VCPKG_PORTS = ['boost-asio', 'boost-beast', 'glfw3']  # MuJoCo comes from mujoco.lock, never from vcpkg
-MUJOCO_LOCK = Path(__file__).resolve().parents[1] / 'external_library/mujoco.lock'
+RUNTIME_ROOT = Path(__file__).resolve().parents[1]
+MUJOCO_LOCK = RUNTIME_ROOT / 'external_library/mujoco.lock'
 PIP_PACKAGES = ['hakoniwa-pdu==1.6.9', 'cffi==2.1.1', 'pycparser==3.0']
 
 
@@ -98,9 +99,15 @@ def msvc(script, vsdevcmd, lines):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--godot-third-party', type=Path, required=True,
-                   help='hakoniwa-godot/third_party containing hakoniwa-core-pro and hakoniwa-pdu-endpoint (read only)')
-    p.add_argument('--json-root', type=Path, required=True, help='nlohmann-json checkout (read only)')
+    # The SDK sources are pinned in THIS repository (single place for every robot):
+    # third_party/hakoniwa-godot (core-pro, pdu-endpoint, godot-cpp; submodule) and
+    # external_library/nlohmann-json (v3.12.0 single header, vendored).
+    p.add_argument('--godot-third-party', type=Path, default=RUNTIME_ROOT / 'third_party/hakoniwa-godot/third_party',
+                   help='hakoniwa-godot/third_party containing hakoniwa-core-pro and hakoniwa-pdu-endpoint '
+                        '(read only; default: this repository\'s submodule)')
+    p.add_argument('--json-root', type=Path, default=RUNTIME_ROOT / 'external_library/nlohmann-json',
+                   help='nlohmann-json root containing single_include/nlohmann/json.hpp '
+                        '(read only; default: the copy vendored in this repository)')
     p.add_argument('--output', type=Path, required=True, help='New directory for sources, builds and the SDK')
     p.add_argument('--vcpkg-root', type=Path, help='Existing vcpkg to reuse; default clones a pinned one')
     p.add_argument('--mujoco-root', type=Path,

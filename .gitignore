@@ -12,9 +12,10 @@ __pycache__/
 #     * nlohmann -> `../nlohmann-json`（**hakoniwa-drone-pro/thirdparty への symlink**。
 #                  drone-pro は PRIVATE で、しかも「使わない」と決めたリポジトリ）
 #   を拾っていた。★★★ **単体でビルドできないのは意味がない。**
-#   → nolman は submodule（版が git に残る）、MuJoCo は `mujoco.lock` の版と SHA256 で取得。
+#   → nlohmann/json は v3.12.0 のヘッダを同梱（2026-11-07 に submodule から変更）、
+#     MuJoCo は `mujoco.lock` の版と SHA256 で取得。
 external_library/*
 !external_library/README.md
 !external_library/setup.sh
 !external_library/mujoco.lock
-!external_library/nolman
+!external_library/nlohmann-json
