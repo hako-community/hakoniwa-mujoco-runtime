@@ -12,6 +12,8 @@
 #   -VsDevCmd : Visual Studio 2022 の VsDevCmd.bat。既定は vswhere で探す
 #   -VcpkgCurl: 認証付きプロキシの内側の PC 向け（vcpkg の初期化とダウンロードを curl で行う。build_sdk.ps1 を参照）
 #
+#     S0 （最初に）箱庭コアを作業場所の third_party\ に用意・照合（tools\hako_core\fetch_third_party.py）
+#
 #     S1 build_sdk.ps1          SDK（箱庭コア・pdu-endpoint・vcpkg・MuJoCo 3.9.0・hakopy）
 #     S2 init_runtime.ps1       実行時設定（共有メモリの場所）
 #     S3 build_master.ps1       壁時計に合わせて進めるマスタ（hako-realtime-master.exe）
@@ -32,7 +34,8 @@ $steps = @(
     @{ name = "init_runtime.ps1";       args = $(if ($MmapDir) { $common + @("-MmapDir", $MmapDir) } else { $common }) },
     @{ name = "build_master.ps1";       args = $build },
     @{ name = "build_endpoint_ffi.ps1"; args = $build },
-    @{ name = "build_godot_ext.ps1";    args = $build }
+    # -Clean: S5 が途中で止まって再開したとき、前回の書き出し（SDK の中の src・build・godot-addon だけ）を消して作り直す
+    @{ name = "build_godot_ext.ps1";    args = $build + @("-Clean") }
 )
 Write-Host "[setup_robo_sdk] SDK: $RoboRoot / Python: $Python / VsDevCmd: $VsDevCmd"
 # SDK ビルダーは中で深いフォルダを作る。長いパスが有効でない PC で SDK の場所が長いと、260 文字を超えて失敗する
@@ -42,6 +45,11 @@ if ($RoboRoot.Length -gt 30 -and $lp -ne 1) {
     Write-Host "[警告] SDK の場所が長い（$($RoboRoot.Length) 文字）。ビルドがパスの長さで失敗することがあります。-Robo で短い場所（例 D:\devai_robo）にしてください" -ForegroundColor Yellow
 }
 $t0 = Get-Date
+Write-Host ""
+Write-Host "##### S0 箱庭コア（$CoreTp） #####" -ForegroundColor Magenta
+$env:PYTHONIOENCODING = "utf-8"
+& $Python -B $CoreLockTool --dest $CoreTp     # 無ければ clone、あれば照合（版が違えば止まる。--refresh は自分で）
+if ($LASTEXITCODE -ne 0) { throw "S0 箱庭コアで止まりました（版が違うなら python $CoreLockTool --refresh）" }
 for ($i = $From; $i -le $steps.Count; $i++) {
     $s = $steps[$i - 1]
     Write-Host ""

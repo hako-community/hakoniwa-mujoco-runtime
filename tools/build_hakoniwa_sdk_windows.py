@@ -99,12 +99,14 @@ def msvc(script, vsdevcmd, lines):
 
 def main():
     p = argparse.ArgumentParser()
-    # The SDK sources are pinned in THIS repository (single place for every robot):
-    # third_party/hakoniwa-godot (core-pro, pdu-endpoint, godot-cpp; submodule) and
+    # The SDK sources are pinned in THIS repository (single place for every robot and drone):
+    # tools/hako_core/third_party.lock (core-pro, pdu-endpoint; always upstream's latest, fetched into
+    # <workspace>/third_party by tools/hako_core/fetch_third_party.py) and
     # external_library/nlohmann-json (v3.12.0 single header, vendored).
-    p.add_argument('--godot-third-party', type=Path, default=RUNTIME_ROOT / 'third_party/hakoniwa-godot/third_party',
-                   help='hakoniwa-godot/third_party containing hakoniwa-core-pro and hakoniwa-pdu-endpoint '
-                        '(read only; default: this repository\'s submodule)')
+    p.add_argument('--core-third-party', '--godot-third-party', dest='core_third_party', type=Path,
+                   default=RUNTIME_ROOT.parent / 'third_party',
+                   help='folder containing hakoniwa-core-pro (with its submodules) and hakoniwa-pdu-endpoint '
+                        '(read only; default: <workspace>/third_party from tools/hako_core/fetch_third_party.py)')
     p.add_argument('--json-root', type=Path, default=RUNTIME_ROOT / 'external_library/nlohmann-json',
                    help='nlohmann-json root containing single_include/nlohmann/json.hpp '
                         '(read only; default: the copy vendored in this repository)')
@@ -117,7 +119,7 @@ def main():
     a = p.parse_args()
     if sys.version_info[:2] != (3, 12) or sys.maxsize < 2**32:
         p.error('Run with 64-bit Python 3.12 (hakopy.pyd is built for this interpreter)')
-    godot, json_root = a.godot_third_party.resolve(strict=True), a.json_root.resolve(strict=True)
+    godot, json_root = a.core_third_party.resolve(strict=True), a.json_root.resolve(strict=True)
     out = a.output.resolve()
     if out.exists() or 'third_party' in out.parts:
         p.error('output must be a NEW directory outside third_party')

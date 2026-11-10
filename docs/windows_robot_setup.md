@@ -1,5 +1,7 @@
 # Windows でロボットを建てる共通手順（armpi・humanoid・cobot）
 
+> **新しい PC では [START_HERE.md](START_HERE.md) から**（`tools\windows\setup_workspace.ps1` が、この文書の 2〜4 を 1 本で行う）。この文書は SDK の中身と段ごとの説明です。
+
 Windows 11 の新しい PC で、hakoniwa-armpi・hakoniwa-humanoid・hakoniwa-cobot の**どれから始めても同じ手順**で、
 ロボット共通 SDK を作ってビルド〜動作確認まで進めるための手順書です。WSL は使いません。
 
@@ -47,9 +49,10 @@ python hakoniwa-humanoid\tools\fetch_deps.py
 D:\work_build\
 ├─ hakoniwa-humanoid\            ← ロボット（deps.lock・tools\fetch_deps.py）
 ├─ hakoniwa-mujoco-runtime\      ← このリポジトリ。ロボット共通 SDK のスクリプト（tools\windows\robo_sdk\）
-│   ├─ third_party\hakoniwa-godot\     ← 他者のリポジトリ（読むだけ）。hakoniwa-core-pro・pdu-endpoint・godot-cpp を含む
+│   ├─ third_party\hakoniwa-godot\     ← 他者のリポジトリ（読むだけ）。GDExtension のコードと godot-cpp を使う（中の古い core-pro は使わない）
 │   └─ external_library\nlohmann-json\ ← v3.12.0 を同梱
 ├─ hakoniwa-mujoco-sensor\       ← センサ
+├─ third_party\                  ← 箱庭コア（S0 で取る。他者のリポジトリ。読むだけ）
 └─ devai_robo\                   ← 3 で作るロボット共通 SDK（git 管理外）
 ```
 
@@ -81,11 +84,12 @@ powershell -ExecutionPolicy Bypass -File hakoniwa-mujoco-runtime\tools\windows\r
 
 | 段 | スクリプト | 作るもの | 所要 |
 |---|---|---|---|
+| S0 | `tools\hako_core\fetch_third_party.py` | 箱庭コア（core-pro・core-cpp・pdu-registry・pdu-endpoint）を `<作業場所>\third_party` に。版は `tools\hako_core\third_party.lock`（ロボット・ドローン共通、上流の最新） | 約 1 分 |
 | S1 | `build_sdk.ps1` | 箱庭コア（`hako-cmd.exe`・`hakopy.pyd`）・pdu-endpoint・vcpkg（Boost・GLFW）・MuJoCo 3.9.0（`external_library\mujoco.lock` の SHA256 で照合） | 約 1 時間 |
 | S2 | `init_runtime.ps1` | 共有メモリの設定 `runtime\windows-msvc-x64\cpp_core_config.json` | 数秒 |
 | S3 | `build_master.ps1` | 壁時計に合わせて進めるマスタ `hako-realtime-master.exe`（ソースは `tools\windows\realtime_master`） | 約 1 分 |
 | S4 | `build_endpoint_ffi.ps1` | pdu-endpoint の C 呼び出し部品 `_c_endpoint_ffi.cp312-win_amd64.pyd`（中継アセットが使う。静的リンクなので DLL は要らない） | 約 1 分 |
-| S5 | `build_godot_ext.ps1` | hakoniwa-godot の GDExtension と型変換（`hako_msgs`・`std_msgs`・`geometry_msgs`・`sensor_msgs`）→ `godot-addon\` | 約 20〜30 分 |
+| S5 | `build_godot_ext.ps1` | hakoniwa-godot の GDExtension と型変換（`hako_msgs`・`std_msgs`・`geometry_msgs`・`sensor_msgs`・`tf2_msgs`・`builtin_interfaces`）→ `godot-addon\` | 約 20〜30 分 |
 
 最後に `check_robo_sdk.ps1` が、ファイルの有無と import を確かめます（単独でも実行できます。何も書き換えません）。
 
@@ -128,11 +132,17 @@ venv には **cffi 2.1.1**（SDK を作った版と同じ）を入れます（�
 |---|---|---|
 | humanoid | `hakoniwa-humanoid\docs\windows_factory_demo\README.md`（02 → 05 → 06） | `config.local.ps1` → `setup_hako.ps1 -From 2`（SDK は 3 で作ったものを使う）→ `check_hako.ps1` → `start_hako.bat` |
 | cobot | `hakoniwa-cobot\docs\windows_setup.md` | `make_venv.ps1` → `build.ps1` → `stage_godot_addon.ps1` → `verify_all.ps1` |
-| armpi | `hakoniwa-armpi\docs\windows_setup.md`（作成中） | |
+| armpi | `hakoniwa-armpi\docs\windows_setup.md` | `make_venv.ps1`（venv・モデルの生成）→ `build.ps1` → `stage_godot_addon.ps1` → `run_demo.ps1 -Demo motion` |
 
 SDK の場所が既定（`<作業場所>\devai_robo`）と違うときは、各ロボットのスクリプトの `-Robo`（humanoid は `config.local.ps1` の `$RoboRoot`）で渡します。
 
-## 5. 困ったとき
+## 5. ドローンと同じ PC に建てるとき
+
+ドローン（hakoniwa-mujoco-drone・hakoniwa-drone-companion）は、**別の作業場所に別の SDK**（`devai_drone`）を建てます。
+入口は同じ **[START_HERE.md](START_HERE.md)**（`setup_workspace.ps1 -Drone`）。箱庭コアは**ロボットと同じ版**（`tools\hako_core\third_party.lock`。上流の最新）です。
+共通のもの・別のものの表は START_HERE.md の §5、箱庭コアの上げ方は [hako_core_update.md](hako_core_update.md)。
+
+## 6. 困ったとき
 
 | 症状 | 原因 | 対処 |
 |---|---|---|

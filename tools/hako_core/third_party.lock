@@ -1,0 +1,20 @@
+# third_party.lock — 箱庭コアの版（ロボット armpi・humanoid・cobot とドローン drone・companion で共通。2026-11-10 から）
+#
+#   方針: 箱庭コアは **いつも上流の最新** を使う。版を上げるときは
+#     python tools/hako_core/fetch_third_party.py --latest       # 上流の main の先頭をこのファイルに書く
+#   を実行してコミットし、各ロボット・ドローンの deps.lock の runtime を上げる（手順は docs/hako_core_update.md）。
+#
+#   fetch_third_party.py は、作業場所の third_party\（runtime の兄弟。例 D:\work_build\third_party）に
+#   ここに書いた版を clone して照合する。★ 他者のリポジトリなので、変更・コミット・push はしない。
+#   SDK を作るスクリプト（ロボット: tools/windows/robo_sdk、ドローン: hakoniwa-mujoco-drone/tools/local_sdk）は
+#   ここから git archive で外へ書き出してからビルドする。
+#
+#   hakoniwa-godot（Godot の GDExtension）は runtime の third_party/hakoniwa-godot を使い、
+#   その中の core-pro・pdu-endpoint だけをここに書いた版に差し替えて作る（共有メモリの形をそろえるため）。
+#
+# name | path（third_party\ からの場所） | url | commit | required
+# サブモジュールは親の後に書く。親が記録しているコミット（gitlink）とここが同じであること。
+hakoniwa-core-pro     | hakoniwa-core-pro                       | https://github.com/hakoniwalab/hakoniwa-core-pro.git     | 722ce022201547eca00c7ab630392faa53f2a431 | yes
+hakoniwa-core-cpp     | hakoniwa-core-pro/hakoniwa-core-cpp     | https://github.com/toppers/hakoniwa-core-cpp.git         | 3def26cf081a1609e83798642092b761ba814bc1 | yes
+hakoniwa-pdu-registry | hakoniwa-core-pro/hakoniwa-pdu-registry | https://github.com/hakoniwalab/hakoniwa-pdu-registry.git | c40ad51fe410b7692fdffcd0c8c94dbf0ea6adb5 | yes
+hakoniwa-pdu-endpoint | hakoniwa-pdu-endpoint                   | https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git | 3b7b25a532e091b59f4e939db7e59ab6abea9d04 | yes

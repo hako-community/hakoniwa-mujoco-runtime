@@ -1,5 +1,9 @@
 # hakoniwa-mujoco-runtime
 
+> **新しい Windows PC でロボット（armpi・humanoid・cobot）かドローンを建てるときは [docs/START_HERE.md](docs/START_HERE.md) から。**
+> 1 本のスクリプト `tools/windows/setup_workspace.ps1` で、ツールの確認〜clone〜箱庭コア〜SDK〜ロボットごとの準備〜確認まで行う。
+> 箱庭コアはロボット・ドローン共通で上流の最新（`tools/hako_core/third_party.lock`、上げ方は [docs/hako_core_update.md](docs/hako_core_update.md)）。
+
 箱庭（[Hakoniwa](https://github.com/toppers/hakoniwa)）向けの **MuJoCo バックエンド実装と
 箱庭アセット基盤**。[`hakoniwa-mujoco-sensor`](https://github.com/hako-community/hakoniwa-mujoco-sensor)
 が依存する**下位レイヤ**。

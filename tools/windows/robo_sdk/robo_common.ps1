@@ -6,6 +6,7 @@
 #     $Plat        : windows-msvc-x64
 #     $SdkRoot     : <RoboRoot>\sdk\windows-msvc-x64
 #     $CoreDir     : <SdkRoot>\sdk\hakoniwa-core
+#     $CoreTp      : <作業場所>\third_party（箱庭コア。tools\hako_core\third_party.lock の版。ロボット・ドローン共通で上流の最新）
 #   グローバルな環境変数・システムには何も書かない。
 $ErrorActionPreference = "Stop"
 $RuntimeRepo = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
@@ -16,6 +17,8 @@ if (-not $Robo) { $Robo = if ($env:DEVAI_ROBO) { $env:DEVAI_ROBO } else { Join-P
 $RoboRoot = [System.IO.Path]::GetFullPath($Robo)
 $SdkRoot = Join-Path $RoboRoot "sdk\$Plat"
 $CoreDir = Join-Path $SdkRoot "sdk\hakoniwa-core"
+$CoreTp = Join-Path $Workspace "third_party"
+$CoreLockTool = Join-Path $RuntimeRepo "tools\hako_core\fetch_third_party.py"
 
 if (-not $Python) { $Python = "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" }    # ストアのエイリアス（python3）は使わない
 if (-not $VsDevCmd) {
@@ -41,6 +44,15 @@ function Invoke-Native([string]$Exe, [string[]]$Arguments, [string]$WorkDir = $n
         if ($LASTEXITCODE -ne 0) { throw "失敗しました（終了コード $LASTEXITCODE）: $Exe" }
     } finally {
         if ($WorkDir) { Pop-Location }
+    }
+}
+
+function Assert-CoreThirdParty {
+    # 作業場所の third_party（箱庭コア）が tools\hako_core\third_party.lock と同じ版かを確かめる（書き換えない）
+    $env:PYTHONIOENCODING = "utf-8"
+    & $Python -B $CoreLockTool --dest $CoreTp --verify-only
+    if ($LASTEXITCODE -ne 0) {
+        throw "箱庭コア（$CoreTp）が lock と違うか、ありません。python $CoreLockTool（版が違うときは --refresh）"
     }
 }
 

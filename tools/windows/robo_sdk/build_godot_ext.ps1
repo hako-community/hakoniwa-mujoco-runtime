@@ -3,17 +3,19 @@
 #   powershell -ExecutionPolicy Bypass -File tools\windows\robo_sdk\build_godot_ext.ps1 [-Robo <場所>] [-Packages "..."] [-Clean] [-CollectOnly]
 #
 # ★ hakoniwa-godot は他者のリポジトリ。third_party の中では何も書かない・ビルドしない（上流の win-build.ps1 等は使わない）。
-# 1) third_party\hakoniwa-godot と、そのサブモジュール（godot-cpp・hakoniwa-core-pro と core-cpp・pdu-registry・
-#    hakoniwa-pdu-endpoint）を、コミット済みの HEAD だけ git archive で <RoboRoot>\src\ へ書き出す
+# 1) third_party\hakoniwa-godot と godot-cpp、作業場所の third_party\ の箱庭コア（hakoniwa-core-pro と core-cpp・pdu-registry・
+#    hakoniwa-pdu-endpoint。tools\hako_core\third_party.lock の最新）を、コミット済みの HEAD だけ git archive で
+#    <RoboRoot>\src\ へ書き出す（hakoniwa-godot が持っている古い core-pro・pdu-endpoint は使わない。SDK と共有メモリの形をそろえる）
 # 2) 書き出したコピーを configure する（nlohmann-json は同梱のものを渡し、ネットから取らない。Boost は SDK の vcpkg）
 # 3) 書き出したコピーの tools\build_all_codecs.ps1 でビルドとメッセージ addon の同期をする（ビルド木は <RoboRoot>\build\）
 # 4) addon 一式（addons\hakoniwa・addons\hakoniwa_msgs）を <RoboRoot>\sdk\windows-msvc-x64\godot-addon へ集め、manifest を書く
 #    （各ロボットの Godot プロジェクトへ入れるのは、ロボット側のスクリプト）
 #
-#   -Packages: 型変換。既定は上流の common-codecs と同じ 4 つ（humanoid・cobot・armpi のビューアが使うもの）
+#   -Packages: 型変換。既定は上流の common-codecs の 4 つ＋ tf2_msgs・builtin_interfaces（humanoid・cobot・armpi のビューアが使うもの。
+#              armpi は tf2_msgs/TFMessage を読む）
 param(
     [string]$Robo = "", [string]$Python = "", [string]$VsDevCmd = "",
-    [string]$Packages = "hako_msgs;std_msgs;geometry_msgs;sensor_msgs",
+    [string]$Packages = "hako_msgs;std_msgs;geometry_msgs;sensor_msgs;tf2_msgs;builtin_interfaces",
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
     [switch]$Clean,
@@ -25,6 +27,8 @@ $RT = $RuntimeRepo -replace '\\', '/'
 $GODOT_REPO = "$RT/third_party/hakoniwa-godot"
 $JSON_ROOT = "$RT/external_library/nlohmann-json"
 Assert-Path "$GODOT_REPO/third_party/godot-cpp" "hakoniwa-godot（ロボットのリポジトリで python tools\fetch_deps.py）"
+Assert-CoreThirdParty
+$CTP = $CoreTp -replace '\\', '/'
 $SRC = Join-Path $RoboRoot "src\$Plat\hakoniwa-godot"
 $BUILD = Join-Path $RoboRoot "build\$Plat\hakoniwa-godot"
 $TOOLCHAIN = Join-Path $SdkRoot "vcpkg\scripts\buildsystems\vcpkg.cmake"
@@ -39,10 +43,10 @@ if ((Test-Path $SRC) -and -not $CollectOnly) { throw "書き出し先が既に�
 $subs = @(
     @{ rel = "";                                                     repo = $GODOT_REPO },
     @{ rel = "third_party/godot-cpp";                                repo = "$GODOT_REPO/third_party/godot-cpp" },
-    @{ rel = "third_party/hakoniwa-core-pro";                        repo = "$GODOT_REPO/third_party/hakoniwa-core-pro" },
-    @{ rel = "third_party/hakoniwa-core-pro/hakoniwa-core-cpp";      repo = "$GODOT_REPO/third_party/hakoniwa-core-pro/hakoniwa-core-cpp" },
-    @{ rel = "third_party/hakoniwa-core-pro/hakoniwa-pdu-registry";  repo = "$GODOT_REPO/third_party/hakoniwa-core-pro/hakoniwa-pdu-registry" },
-    @{ rel = "third_party/hakoniwa-pdu-endpoint";                    repo = "$GODOT_REPO/third_party/hakoniwa-pdu-endpoint" }
+    @{ rel = "third_party/hakoniwa-core-pro";                        repo = "$CTP/hakoniwa-core-pro" },
+    @{ rel = "third_party/hakoniwa-core-pro/hakoniwa-core-cpp";      repo = "$CTP/hakoniwa-core-pro/hakoniwa-core-cpp" },
+    @{ rel = "third_party/hakoniwa-core-pro/hakoniwa-pdu-registry";  repo = "$CTP/hakoniwa-core-pro/hakoniwa-pdu-registry" },
+    @{ rel = "third_party/hakoniwa-pdu-endpoint";                    repo = "$CTP/hakoniwa-pdu-endpoint" }
 )
 $commits = $null
 if (-not $CollectOnly) {
@@ -70,6 +74,11 @@ if (-not $CollectOnly) {
         "-DHAKONIWA_GODOT_BUILD_TESTS=OFF",
         "-DHAKONIWA_GODOT_BUILD_EXAMPLES=OFF",
         "-DHAKONIWA_GODOT_MINIMAL_DEP_BUILD=ON",
+        # pdu-endpoint 3b7b25a（2026-11）からベンチマーク・ツールが既定で ON。GDExtension の中では assets ライブラリが無く
+        # find_library で止まるので切る（GDExtension に要るのはライブラリだけ）
+        "-DHAKO_PDU_ENDPOINT_BUILD_BENCHMARKS=OFF",
+        "-DHAKO_PDU_ENDPOINT_BUILD_TOOLS=OFF",
+        "-DHAKO_PDU_ENDPOINT_BUILD_TESTS=OFF",
         "-DCMAKE_TOOLCHAIN_FILE=$($TOOLCHAIN -replace '\\','/')",
         "-DVCPKG_TARGET_TRIPLET=x64-windows",
         "-DHAKO_LOCAL_NLOHMANN_JSON_ROOT=$JSON_ROOT"

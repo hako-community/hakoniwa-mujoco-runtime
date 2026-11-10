@@ -2,22 +2,22 @@
 #
 #   powershell -ExecutionPolicy Bypass -File tools\windows\robo_sdk\build_sdk.ps1 [-Robo <場所>]
 #
-#   tools\build_hakoniwa_sdk_windows.py を呼ぶ。材料（third_party\hakoniwa-godot の中の hakoniwa-core-pro・pdu-endpoint、
-#   同梱の nlohmann-json）は git archive で読むだけで、中には何も書かない。
+#   tools\build_hakoniwa_sdk_windows.py を呼ぶ。材料（作業場所の third_party\ の hakoniwa-core-pro・pdu-endpoint = 箱庭コアの最新、
+#   同梱の nlohmann-json）は git archive で読むだけで、中には何も書かない。third_party は tools\hako_core\fetch_third_party.py で用意する。
 #   vcpkg（Boost・GLFW）と MuJoCo 3.9.0（公式版。mujoco.lock の SHA256 で照合）も出力先の中に入る。
 #   出力先に SDK が既にあるときは止まる（作り直すときは出力先を自分で退避・削除する）。
 #
 #   -VcpkgCurl: 認証付きプロキシの内側の PC 向け。vcpkg の初期化（bootstrap-vcpkg.bat。WinHTTP を使う）はプロキシを通らないので、
 #               vcpkg を <RoboRoot>\vcpkg に git で取り、vcpkg.exe と vcpkg のダウンロードを curl で行う。
 #               SDK の中の vcpkg はジャンクションでつなぐ。以後の段（S5 など）も curl でダウンロードする（印のファイル vcpkg_curl.txt）。
+#   2 回目からは vcpkg のバイナリキャッシュ（%LOCALAPPDATA%\vcpkg\archives）から Boost・GLFW を戻すので速い。
 param([string]$Robo = "", [string]$Python = "", [string]$VsDevCmd = "", [switch]$VcpkgCurl)
 . "$PSScriptRoot\robo_common.ps1"
 $Script = Join-Path $RuntimeRepo "tools\build_hakoniwa_sdk_windows.py"
-$GodotTp = Join-Path $RuntimeRepo "third_party\hakoniwa-godot\third_party"
 $Json = Join-Path $RuntimeRepo "external_library\nlohmann-json"
 Assert-Path $Python "Python 3.12（64 ビット）"
 Assert-Path $VsDevCmd "Visual Studio 2022 の VsDevCmd.bat（-VsDevCmd で指定）"
-Assert-Path (Join-Path $GodotTp "hakoniwa-core-pro\CMakeLists.txt") "hakoniwa-godot（ロボットのリポジトリで python tools\fetch_deps.py）"
+Assert-CoreThirdParty
 Assert-Path (Join-Path $Json "single_include\nlohmann\json.hpp") "同梱の nlohmann-json"
 if (Test-Path $CoreDir) { throw "SDK は既にあります: $SdkRoot（作り直すときは退避・削除してから）" }
 
@@ -42,7 +42,7 @@ if ($VcpkgCurl) {
 Use-RoboSdkEnv     # vcpkg_curl.txt があれば X_VCPKG_ASSET_SOURCES も設定する
 $env:PYTHONPATH = ""
 Write-Step "SDK を作る → $SdkRoot"
-Invoke-Native $Python (@("-B", $Script, "--godot-third-party", $GodotTp, "--json-root", $Json, "--output", $SdkRoot, "--vsdevcmd", $VsDevCmd) + $extra)
+Invoke-Native $Python (@("-B", $Script, "--core-third-party", $CoreTp, "--json-root", $Json, "--output", $SdkRoot, "--vsdevcmd", $VsDevCmd) + $extra)
 if ($VcpkgCurl -and -not (Test-Path (Join-Path $SdkRoot "vcpkg"))) {
     New-Item -ItemType Junction -Path (Join-Path $SdkRoot "vcpkg") -Target $Vc | Out-Null     # 管理者権限は要らない
     Write-Host "[junction] $SdkRoot\vcpkg -> $Vc"

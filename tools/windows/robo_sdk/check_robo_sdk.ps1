@@ -23,6 +23,28 @@ Check "共有メモリの設定"                     (Join-Path $RoboRoot "runti
 Check "Godot addon（GDExtension）"          (Join-Path $SdkRoot "godot-addon\addons\hakoniwa\hakoniwa.gdextension")
 $man = Join-Path $SdkRoot "godot-addon\godot_addon_manifest.json"
 if (Test-Path $man) { Write-Host "     型変換: $((Get-Content $man -Raw | ConvertFrom-Json).packages)" }
+
+# 箱庭コアの版: SDK（sdk_manifest.json）と Godot addon（godot_addon_manifest.json）が、tools\hako_core\third_party.lock と同じか
+$lock = @{}
+foreach ($l in Get-Content -Encoding UTF8 (Join-Path $RuntimeRepo "tools\hako_core\third_party.lock")) {
+    if ($l -match '^\s*#' -or -not $l.Trim()) { continue }
+    $f = $l -split '\|' | ForEach-Object { $_.Trim() }
+    $lock[$f[0]] = $f[3]
+}
+$sdkMan = Join-Path $SdkRoot "sdk\sdk_manifest.json"
+if (Test-Path $sdkMan) {
+    $src = (Get-Content $sdkMan -Raw | ConvertFrom-Json).sources
+    foreach ($n in "hakoniwa-core-pro", "hakoniwa-pdu-endpoint") {
+        if ($src.$n -eq $lock[$n]) { Write-Host "[ok] SDK の $n = lock（$($lock[$n].Substring(0, 12))）" -ForegroundColor Green }
+        else { Write-Host "[NG] SDK の $n が $($src.$n) で、lock（$($lock[$n])）と違う → SDK を作り直す（docs\hako_core_update.md）" -ForegroundColor Red; $ng++ }
+    }
+} else { Write-Host "[NG] sdk_manifest.json が無い: $sdkMan" -ForegroundColor Red; $ng++ }
+if (Test-Path $man) {
+    $gs = (Get-Content $man -Raw | ConvertFrom-Json).sources
+    $gc = $gs.'third_party/hakoniwa-core-pro'
+    if ($gc -eq $lock["hakoniwa-core-pro"]) { Write-Host "[ok] Godot addon の hakoniwa-core-pro = lock" -ForegroundColor Green }
+    else { Write-Host "[NG] Godot addon の hakoniwa-core-pro が $gc で、lock と違う → build_godot_ext.ps1 -Clean" -ForegroundColor Red; $ng++ }
+}
 $pyd = Get-ChildItem (Join-Path $CoreDir "python\hakoniwa_pdu_endpoint") -Filter "_c_endpoint_ffi*.pyd" -ErrorAction SilentlyContinue
 if ($pyd) { Write-Host "[ok] pdu-endpoint の C 呼び出し部品" -ForegroundColor Green } else { Write-Host "[NG] pdu-endpoint の C 呼び出し部品が無い" -ForegroundColor Red; $ng++ }
 
