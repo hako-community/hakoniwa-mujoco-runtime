@@ -108,6 +108,10 @@ cmake -S . -B build \
 cmake --build build
 ```
 
+Windows でロボット（hakoniwa-armpi・hakoniwa-humanoid・hakoniwa-cobot）を建てるときのロボット共通 SDK
+（箱庭コア・pdu-endpoint・MuJoCo・実時間マスタ・hakoniwa-godot の addon）は、
+`tools/windows/robo_sdk/setup_robo_sdk.ps1` で作る。手順は [docs/windows_robot_setup.md](docs/windows_robot_setup.md)。
+
 `libmujoco` / `hakoniwa-core` のリンクは最終実行体（PLANT）の責務。本ライブラリは
 ヘッダ解決とアセット層 2 ファイルのコンパイルのみを担う。
 
