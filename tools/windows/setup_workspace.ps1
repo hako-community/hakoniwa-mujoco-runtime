@@ -26,7 +26,10 @@
 #   -RebuildSdk: SDK の箱庭コアが lock と違うとき、今の SDK を <SDK>.old-<日時> に退避して作り直す（ロボット）
 #                箱庭コアがもう lock と同じで一部だけ足りない（作りかけ）なら、退避せずに続きを作る
 #   -SdkFrom N : その「続き」を setup_robo_sdk の S-N から（例 S5 の Godot addon で止まったら -From 5 -SdkFrom 5）
-#   -WithNcMachine: cobot を加工機と連携する形で建てる（hakoniwa-ncmachine も clone）
+#   -WithNcMachine: cobot を加工機と連携する形で建てる（hakoniwa-ncmachine〔非公開〕と image2sim-framework も clone し、
+#                W6 で加工機・台車・パレットのモデルを image2sim-framework で作って hakoniwa-ncmachine\machines\ に取り込む）
+#   -Blender   : モデルの GLB を作る Blender の exe（既定: 環境変数 BLENDER_EXE、無ければ Program Files・PATH を探す。
+#                見つからなければ GLB なしで作る）
 #   -Test      : ドローンの ctest（drone 約 11 分・companion 約 15 分）も流す
 #   -Check     : 何も作らず、W1・W3・W4・W7 の確認だけ
 param(
@@ -39,6 +42,7 @@ param(
     [switch]$RebuildSdk,
     [ValidateRange(1, 5)][int]$SdkFrom = 1,
     [switch]$WithNcMachine,
+    [string]$Blender = "",
     [switch]$Test,
     [switch]$Check
 )
@@ -133,7 +137,11 @@ foreach ($r in $Robot) {
         $repos.Add(@{ name = "hakoniwa-armpi"; need = $true; deps = $true })                # ライン2 のアームのモデル
         $repos.Add(@{ name = "hakoniwa-godot-robot"; need = $true; deps = $false; private = $true })   # デモのコード（非公開）
     }
-    if ($r -eq "cobot" -and $WithNcMachine) { $repos.Add(@{ name = "hakoniwa-ncmachine"; need = $true; deps = $false }) }
+    if ($r -eq "cobot" -and $WithNcMachine) {
+        $repos.Add(@{ name = "hakoniwa-ncmachine"; need = $true; deps = $false; private = $true })          # 加工機（非公開）
+        # 加工機のモデルの生成元（machines\ は git に入っていない生成物。hako-community ではなく buildko89 の公開リポジトリ）
+        $repos.Add(@{ name = "image2sim-framework"; need = $true; deps = $false; url = "https://github.com/buildko89/image2sim-framework.git" })
+    }
 }
 if ($Drone) {
     $repos.Add(@{ name = "hakoniwa-mujoco-drone"; need = $true; deps = $true })
@@ -176,7 +184,8 @@ if ($From -le 2 -and -not $Check) {
         $dir = Join-Path $Workspace $r.name
         if (Test-Path (Join-Path $dir ".git")) { Write-Host "[ok] $($r.name)（あります。触りません）" -ForegroundColor Green; continue }
         if ($r.private) { Write-Host "[注意] $($r.name) は非公開です。hako-community の権限が要ります（gh auth login など）" -ForegroundColor Yellow }
-        Invoke-Native "git" @("-c", "core.longpaths=true", "clone", "$Org/$($r.name).git", $dir)
+        $url = if ($r.url) { $r.url } else { "$Org/$($r.name).git" }
+        Invoke-Native "git" @("-c", "core.longpaths=true", "clone", $url, $dir)
     }
 }
 
@@ -275,6 +284,21 @@ if ($From -le 6 -and -not $Check -and $Robot) {
                 $w = Join-Path $repo "scripts\windows"
                 $nc = if ($WithNcMachine) { @("-WithNcMachine") } else { @() }
                 Invoke-Ps1 (Join-Path $w "make_venv.ps1") (@("-Robo", $Robo) + $nc)
+                if ($WithNcMachine) {
+                    # 加工機・台車・パレット・仮置き台のモデル（hakoniwa-ncmachine\machines\<id>\。git に入っていない生成物）。
+                    # 無いと build.ps1 の単体試験 machine_plant_test が「Error opening file ../../machines/turning_h_k2/...」で落ち、
+                    # gen_cell もセルを作れない。image2sim-framework で作り（run_build.py）、import_model.py で取り込む。
+                    # 一覧は cobot の cell\cell_nc_*.yaml が使うもの（stand_flip は手書きで git に入っている）
+                    $ncDir = Join-Path $Workspace "hakoniwa-ncmachine"
+                    $i2s = Join-Path $Workspace "image2sim-framework"
+                    $vpy = Join-Path $repo ".venv\Scripts\python.exe"
+                    if ($Blender) { $env:BLENDER_EXE = $Blender }
+                    foreach ($m in @("turning_h_k2", "cart_large", "pallet_L", "stand_temp")) {
+                        if (Test-Path (Join-Path $ncDir "machines\$m\$m.xml")) { Write-Host "[ok] 加工機のモデル $m（あります。触りません）" -ForegroundColor Green; continue }
+                        Invoke-Native $vpy @("-B", "scripts\nc_machine\run_build.py", $m) $i2s      # Blender が無ければ GLB なしで作る
+                        Invoke-Native $vpy @("-B", "tools\import_model.py", $m) $ncDir
+                    }
+                }
                 Invoke-Ps1 (Join-Path $w "build.ps1") (@("-Robo", $Robo) + $nc)
                 Invoke-Ps1 (Join-Path $w "stage_godot_addon.ps1") @("-Robo", $Robo)
             }
@@ -310,7 +334,11 @@ Write-Host "================ 次に動かすコマンド ================" -Fore
 foreach ($r in $Robot) {
     switch ($r) {
         "humanoid" { Write-Host "humanoid（箱庭版ライブ）: $Workspace\hakoniwa-humanoid\scripts\windows\factory_demo\hako\start_hako.bat`n    Godot なしの確認: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-humanoid\scripts\windows\factory_demo\hako\check_hako.ps1 -Scenario rezot" }
-        "cobot"    { Write-Host "cobot: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-cobot\scripts\windows\verify_all.ps1" }
+        "cobot"    {
+            Write-Host "cobot（Godot で見る）: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-cobot\scripts\windows\demo.ps1 -Godot $Godot"
+            Write-Host "    自動の確かめ: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-cobot\scripts\windows\verify_all.ps1"
+            if ($WithNcMachine) { Write-Host "    NC 加工機との連携（Godot で見る）: docs\START_HERE.md の §4.2" }
+        }
         "armpi"    { Write-Host "armpi: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-armpi\scripts\windows\run_demo.ps1 -Demo motion" }
     }
 }

@@ -67,7 +67,8 @@ powershell -ExecutionPolicy Bypass -File hakoniwa-mujoco-runtime\tools\windows\s
 | `-SdkFrom N` | 上の「続き」を setup_robo_sdk の S-N から（例 `-From 5 -SdkFrom 5`） |
 | `-Robo <場所>` | ロボット共通 SDK の場所（既定 `<作業場所>\devai_robo`） |
 | `-Godot <exe>` | Godot 4.7.1 の exe |
-| `-WithNcMachine` | cobot を加工機と連携する形で（hakoniwa-ncmachine も clone） |
+| `-WithNcMachine` | cobot を加工機と連携する形で（hakoniwa-ncmachine・image2sim-framework も clone し、加工機のモデルを作る。§4.2） |
+| `-Blender <exe>` | 加工機のモデルの GLB を作る Blender 5.2（既定: `BLENDER_EXE`、無ければ Program Files・PATH） |
 | `-Test` | ドローンの ctest も流す |
 
 ## 4. 動かす
@@ -78,9 +79,98 @@ powershell -ExecutionPolicy Bypass -File hakoniwa-mujoco-runtime\tools\windows\s
 |---|---|---|
 | humanoid（展示会の箱庭版ライブ） | `hakoniwa-humanoid\scripts\windows\factory_demo\hako\start_hako.bat` | Godot に工場。A/B/C を切り替え・攻撃開始ができる。手順書 06 |
 | humanoid（Godot なしの確認） | `…\factory_demo\hako\check_hako.ps1 -Scenario rezot` | 4/4 台が搬送を続け、実時間比 約 1.0 |
-| cobot | `hakoniwa-cobot\scripts\windows\verify_all.ps1` | 全部 合格 |
+| cobot（Godot で見る） | `hakoniwa-cobot\scripts\windows\demo.ps1`（§4.1） | Godot にセル。ロボットがワークをつかんで置く |
+| cobot（NC 加工機と連携・Godot で見る） | `hakoniwa-cobot\tools\run_cell.py --scenario tending --viewer`（§4.2。`-WithNcMachine` で建てたとき） | Godot に加工機とロボット。ワークの装着・加工・取り出しを繰り返す |
+| cobot（自動の確かめ） | `hakoniwa-cobot\scripts\windows\verify_all.ps1` | 全部 合格 |
 | armpi | `hakoniwa-armpi\scripts\windows\run_demo.ps1 -Demo motion` | Godot に ArmPi が振付どおりに動く。`logs\win_*\run.json` |
 | drone | `hakoniwa-mujoco-drone\tools\local_sdk\setup_windows.ps1 run` | Origin-01 ×2 機が飛ぶ |
+
+### 4.1 cobot を Godot で見る
+
+`demo.ps1` が、確認（venv・SDK・Godot・addon・前の実行の残り）から Godot のビューア付きの起動までを 1 本で行います。
+SDK は `<作業場所>\devai_robo` を自動で見つけますが、**Godot は `-Godot` か環境変数 `GODOT_EXE` で指定が要ります**（既定の場所でも同じ）。
+
+```powershell
+cd D:\work_build\hakoniwa-cobot
+$env:GODOT_EXE = "D:\Godot_v4.7.1-stable_mono_win64\Godot_v4.7.1-stable_mono_win64.exe"   # この窓だけ
+
+powershell -ExecutionPolicy Bypass -File scripts\windows\demo.ps1                  # A（CRX-30iA）で取って置く 5 回（約 1 分。終わると窓は閉じる）
+powershell -ExecutionPolicy Bypass -File scripts\windows\demo.ps1 -Robot B -Cycles 10   # B（CRX-20iA/L）で 10 回
+```
+
+| やりたいこと | `demo.ps1` に付ける引数 |
+|---|---|
+| B（CRX-20iA/L）で動かす | `-Robot B` |
+| 回数を変える | `-Cycles 10` |
+| 終わっても窓を閉じない | `-KeepViewer` |
+| 手でロボットを動かす（別の窓の jog_cli。最大 1 時間） | `-Demo jog` |
+| 機能を一通り（速度スケーリング・協働速度制限・直線補間・異常） | `-Demo functions` |
+| ハンドの開閉 | `-Demo hand` |
+| 正弦波で各軸を動かす | `-Demo sine -Duration 60` |
+| 前の実行が残っていて始まらない | `-Cleanup`（残っているプロセスを止めてから始める） |
+
+Godot の窓：左ドラッグで回転・右／中ドラッグで平行移動・ホイールで寄る／引く・Home で視点を戻す・H でパネルを隠す。
+ビューアは箱庭の同期に参加しないので、窓を閉じてもシミュレーションは止まりません。詳しくは `hakoniwa-cobot\WINDOWS_BUILD_AND_DEMO_GUIDE.md` の「8. デモの動かし方」。
+
+### 4.2 cobot と NC 加工機の連携を Godot で見る
+
+複合加工機 K2 と、大型台車に載せた協働ロボットA（3 爪ハンド）が同じセルで動きます（マシンテンディング）。
+ロボットが仮置き台からワークを取り、加工機の扉・チャックと I/O でやり取りしながら装着 → 加工 → 取り出しを繰り返します。
+
+**1. 加工機を組み込んで建てる（初回だけ）**
+
+`hakoniwa-ncmachine` は **非公開**です（hako-community の権限が要る。clone が失敗したら `gh auth login` してからやり直す）。
+
+```powershell
+cd D:\work_build
+powershell -ExecutionPolicy Bypass -File hakoniwa-mujoco-runtime\tools\windows\setup_workspace.ps1 -Robot cobot -WithNcMachine
+```
+
+できているもの（SDK など）は飛ばし、次を行います。
+
+| 段 | すること |
+|---|---|
+| W2 | `hakoniwa-ncmachine`（非公開）と `image2sim-framework`（加工機のモデルの生成元。`github.com/buildko89/image2sim-framework`）を clone |
+| W6 | cobot の venv に `ncmachine` を入れる（`make_venv.ps1 -WithNcMachine`） |
+| W6 | **加工機・台車・パレット・仮置き台のモデル**（`turning_h_k2`・`cart_large`・`pallet_L`・`stand_temp`）を image2sim-framework で作り（`scripts\nc_machine\run_build.py`）、`hakoniwa-ncmachine\machines\` に取り込む（`tools\import_model.py`）。`machines\` は git に入っていない生成物なので、新しい PC では必ず要る。1 つ数秒〜30 秒 |
+| W6 | `cobot_sim` を加工機の物理込みでビルドし直す（`build.ps1 -WithNcMachine`。単体試験 `machine_plant_test` も流れる） |
+
+- モデルの見た目（GLB）は **Blender 5.2** で作ります。Program Files 以外に置いたときは `-Blender <blender.exe>` を付けます
+  （例 `-Blender "D:\Blender 5.2\blender.exe"`）。見つからなければ GLB なしで作ります（物理・単体試験は動く）。
+- 加工機の無いセル（§4.1）も、このビルドのまま動きます。
+- モデルが無いまま `build.ps1 -WithNcMachine` を流すと、単体試験が `XML Error: Error opening file '../../machines/turning_h_k2/turning_h_k2.xml'` で落ちます。
+  `setup_workspace.ps1 -Robot cobot -WithNcMachine -From 6` で作り直せます。
+
+**2. 動かす**
+
+`demo.ps1` には加工機のデモが無いので、`run_cell.py` を直接使います。SDK の場所は `DEVAI_ROBO` で渡します
+（`run_cell.py` の既定は `D:\work_build\devai_robo`）。Godot は `GODOT_EXE`、無ければ `D:\Godot_v4.7.1-stable_mono_win64\…mono_win64.exe` を使います。
+
+```powershell
+cd D:\work_build\hakoniwa-cobot
+$env:DEVAI_ROBO = "D:\work_build\devai_robo"
+$env:GODOT_EXE  = "D:\Godot_v4.7.1-stable_mono_win64\Godot_v4.7.1-stable_mono_win64.exe"
+
+# マシンテンディング（N5）：2 個、加工時間を 30 秒に短縮（約 8 分）
+.venv\Scripts\python.exe -B tools\run_cell.py --cell cell\cell_nc_m2.yaml --controller vc --scenario tending --cycles 2 --machining-s 30 --duration 480 --viewer
+
+# I/O だけの確認（N4）：ロボットは動かさず、扉・チャック・加工開始を 1 つずつ操作する（短い）
+.venv\Scripts\python.exe -B tools\run_cell.py --cell cell\cell_nc_a.yaml --controller vc --scenario nc_io --machining-s 5 --viewer
+```
+
+| 引数 | 意味 |
+|---|---|
+| `--cycles N` | ワークの個数（省くと `config\tending\m2_ws3.yaml` の設定） |
+| `--machining-s 秒` | 仮想 NC の加工時間を短くする（省くと加工機の設定のまま。`verify_n5.py` は 120 秒と見積もっている） |
+| `--duration 秒` | 打ち切りの時間（箱庭の秒。既定 300）。**tending は長いので合わせる**：目安 `(加工時間 + 90) × (個数 + 1) + 120` |
+| `--keep-viewer` | 終わっても Godot を閉じない |
+| `--fault F2` | 異常を 1 つ注入する（N6。hakoniwa-ncmachine の `config\faults.yaml`） |
+| `--tending-config config\tending\m2_ws3_flip.yaml` と `--cell cell\cell_nc_m2_flip.yaml` | 反転台を使う形（N7-1） |
+
+- 結果は `logs\<セル>_<日時>\run.json`。途中で Ctrl+C すると子のプロセスが残って共有メモリをつかんだままになるので、
+  次の前に止める：`. scripts\windows\lib_verify.ps1; Assert-NoLeftover $true`（cobot のプロセスと Godot ビューアだけを止める）。
+- 合否まで自動で見るときは `.venv\Scripts\python.exe -B tools\verify\verify_n5.py --cycles 2 --machining-s 30 --viewer`（`reports\n5\`）。
+- 加工機との連携の中身（セル設定・PDU・I/O）は `hakoniwa-cobot\README.md` の「加工機との連携」。
 
 ## 5. ロボットとドローンで共通のもの・別のもの
 
