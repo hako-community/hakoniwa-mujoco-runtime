@@ -16,7 +16,7 @@
 #     W4 箱庭コア   tools\hako_core\fetch_third_party.py（<作業場所>\third_party。ロボット・ドローン共通の最新）
 #     W5 SDK        ロボット: robo_sdk\setup_robo_sdk.ps1（devai_robo。初回 約 1〜1.5 時間）
 #                   ドローン: hakoniwa-mujoco-drone\tools\local_sdk\setup_windows.ps1（devai_drone。SDK・MuJoCo・venv・ビルド 約 10 分）
-#     W6 ロボット   humanoid: config.local.ps1（無ければ作る）→ setup_python → hako\setup_hako -From 2
+#     W6 ロボット   humanoid: config.local.ps1（無ければ作る）→ setup_python → hako\setup_hako -From 2 → C++ プラントの build・stage_godot_addon
 #                   cobot: make_venv → build → stage_godot_addon     armpi: make_venv → build → stage_godot_addon
 #     W7 確認       check_robo_sdk・humanoid の check_env／ドローンは -Test で ctest。最後に「次に動かすコマンド」を出す
 #
@@ -279,6 +279,10 @@ if ($From -le 6 -and -not $Check -and $Robot) {
                 $env:FACTORY_DEMO_ROBO_ROOT = $Robo
                 Invoke-Ps1 (Join-Path $fd "setup_python.ps1")
                 Invoke-Ps1 (Join-Path $fd "hako\setup_hako.ps1") @("-From", "2")
+                # C++ プラント（humanoid_sim。歩行・センサの確認と歩行デモ）とビューアの addon（venv は上の setup_hako が作る）
+                $w = Join-Path $repo "scripts\windows"
+                Invoke-Ps1 (Join-Path $w "build.ps1") @("-Robo", $Robo)
+                Invoke-Ps1 (Join-Path $w "stage_godot_addon.ps1") @("-Robo", $Robo, "-Godot", $Godot)
             }
             "cobot" {
                 $w = Join-Path $repo "scripts\windows"
@@ -333,7 +337,7 @@ Write-Host ""
 Write-Host "================ 次に動かすコマンド ================" -ForegroundColor Cyan
 foreach ($r in $Robot) {
     switch ($r) {
-        "humanoid" { Write-Host "humanoid（箱庭版ライブ）: $Workspace\hakoniwa-humanoid\scripts\windows\factory_demo\hako\start_hako.bat`n    Godot なしの確認: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-humanoid\scripts\windows\factory_demo\hako\check_hako.ps1 -Scenario rezot" }
+        "humanoid" { Write-Host "humanoid（箱庭版ライブ）: $Workspace\hakoniwa-humanoid\scripts\windows\factory_demo\hako\start_hako.bat`n    Godot なしの確認: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-humanoid\scripts\windows\factory_demo\hako\check_hako.ps1 -Scenario rezot`n    C++ プラントの確認: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-humanoid\scripts\windows\verify.ps1`n    歩行デモ: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-humanoid\scripts\windows\demo.ps1" }
         "cobot"    {
             Write-Host "cobot（Godot で見る）: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-cobot\scripts\windows\demo.ps1 -Godot $Godot"
             Write-Host "    自動の確かめ: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-cobot\scripts\windows\verify_all.ps1"

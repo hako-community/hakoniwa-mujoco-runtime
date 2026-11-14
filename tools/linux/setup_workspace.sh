@@ -21,7 +21,7 @@
 #     W4 箱庭コア   tools/hako_core/fetch_third_party.py（<作業場所>/third_party。ロボット・ドローン共通の最新）
 #     W5 SDK        ロボット: tools/linux/robo_sdk/setup_robo_sdk.bash（devai_robo。初回 約 30〜50 分）
 #                   ドローン: hakoniwa-mujoco-drone/tools/local_sdk/setup_linux.bash（devai_drone。約 5 分）
-#     W6 ロボット   humanoid: setup_hako --from 2（venv・ArmPi のモデル・Godot addon）
+#     W6 ロボット   humanoid: setup_hako --from 2（venv・ArmPi のモデル・Godot addon）→ C++ プラントの build・stage_godot_addon
 #                   cobot: make_venv → （加工機のモデル）→ build → stage_godot_addon     armpi: make_venv → build → stage_godot_addon
 #        ビューア   ドローンの --godot: hakoniwa-godot-drone の fetch_native.sh と C# ビルド、--wind: 風況デモの準備
 #     W7 確認       ロボット: check_robo_sdk・humanoid の check_env／ドローン: --test で ctest。最後に「次に動かすコマンド」を出す
@@ -255,7 +255,10 @@ if [[ "${FROM}" -le 6 && "${CHECK}" != 1 && "${ROBOT}" == 1 ]]; then
     printf '\n%s--- %s ---%s\n' "${c_cyan}" "${r}" "${c_off}"
     case "${r}" in
       humanoid)
-        FACTORY_DEMO_ROBO_ROOT="${ROBO}" run bash "${repo}/scripts/linux/factory_demo/hako/setup_hako.bash" --from 2 ;;
+        FACTORY_DEMO_ROBO_ROOT="${ROBO}" run bash "${repo}/scripts/linux/factory_demo/hako/setup_hako.bash" --from 2
+        # C++ プラント（humanoid_sim。歩行・センサの確認と歩行デモ）とビューアの addon（venv は上の setup_hako が作る）
+        run bash "${repo}/scripts/linux/build.bash" --robo "${ROBO}"
+        run bash "${repo}/scripts/linux/stage_godot_addon.bash" --robo "${ROBO}" ;;
       cobot)
         nc=(); [[ "${NC}" == 1 ]] && nc=(--with-ncmachine)
         run bash "${repo}/scripts/linux/make_venv.bash" --robo "${ROBO}" "${nc[@]}"
@@ -324,7 +327,9 @@ if [[ "${ROBOT}" == 1 ]]; then
     case "${r}" in
       humanoid)
         echo "humanoid（箱庭版ライブ）: bash ${WS}/hakoniwa-humanoid/scripts/linux/factory_demo/hako/start_hako.bash"
-        echo "    Godot なしの確認: bash ${WS}/hakoniwa-humanoid/scripts/linux/factory_demo/hako/check_hako.bash --scenario rezot" ;;
+        echo "    Godot なしの確認: bash ${WS}/hakoniwa-humanoid/scripts/linux/factory_demo/hako/check_hako.bash --scenario rezot"
+        echo "    C++ プラントの確認: bash ${WS}/hakoniwa-humanoid/scripts/linux/verify.bash（画面が無いと camera・viewer は飛ばす）"
+        echo "    歩行デモ: bash ${WS}/hakoniwa-humanoid/scripts/linux/demo.bash（SSH からは --no-viewer）" ;;
       cobot)
         echo "cobot（Godot で見る）: bash ${WS}/hakoniwa-cobot/scripts/linux/demo.bash"
         echo "    自動の確かめ: bash ${WS}/hakoniwa-cobot/scripts/linux/verify_all.bash（--quick で箱庭なしだけ）"

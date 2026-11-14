@@ -107,6 +107,8 @@ Windows の `tools\windows\robo_sdk`（S0〜S5）と同じ段を、`tools/linux/
 |---|---|---|
 | humanoid（箱庭版ライブ） | `bash hakoniwa-humanoid/scripts/linux/factory_demo/hako/start_hako.bash` | Godot に工場。A/B/C を切り替え・攻撃開始ができる |
 | humanoid（Godot なしの確認） | `bash hakoniwa-humanoid/scripts/linux/factory_demo/hako/check_hako.bash --scenario rezot` | 4/4 台が搬送を続け、RezOT が改ざんを自動で復旧する（`reports/check/probe.log`） |
+| humanoid（C++ プラントの確認） | `bash hakoniwa-humanoid/scripts/linux/verify.bash`（画面が無いと camera・viewer は飛ばす） | 歩行・センサ・変換・決定論などが全部 合格（`logs/run_check.json`） |
+| humanoid（歩行デモ） | `bash hakoniwa-humanoid/scripts/linux/demo.bash`（Godot なし: `--no-viewer`） | Godot で HumanoidD04 が歩く |
 | cobot（Godot で見る） | `bash hakoniwa-cobot/scripts/linux/demo.bash`（Windows の `demo.ps1` と同じ引数を `--robot B --cycles 10` の形で） | Godot にセル。ロボットがワークをつかんで置く |
 | cobot（NC 加工機と連携・Godot で見る） | §4.2 | Godot に加工機とロボット。ワークの装着・加工・取り出しを繰り返す |
 | cobot（自動の確かめ） | `bash hakoniwa-cobot/scripts/linux/verify_all.bash`（`--quick` で箱庭なしだけ） | 全部 合格（6 番 verify_p5 はビューア付きなので画面が要る） |
@@ -123,12 +125,14 @@ Windows の `tools\windows\robo_sdk`（S0〜S5）と同じ段を、`tools/linux/
 |---|---|
 | cobot: `make_venv.ps1`・`build.ps1`・`stage_godot_addon.ps1`・`demo.ps1`・`verify_all.ps1` | `make_venv.bash`・`build.bash`・`stage_godot_addon.bash`・`demo.bash`・`verify_all.bash`（引数は `-Robot B` → `--robot B` の形） |
 | armpi: `make_venv.ps1`・`build.ps1`・`stage_godot_addon.ps1`・`run_demo.ps1` | `make_venv.bash`・`build.bash`（ビルド先 `mujoco_plant/build-linux`）・`stage_godot_addon.bash`・`run_demo.bash` |
-| humanoid: `factory_demo\setup_python.ps1`・`hako\setup_hako.ps1`・`hako\start_hako.ps1`・`hako\check_hako.ps1`・`check_env.ps1` | `factory_demo/setup_python.bash`・`hako/setup_hako.bash`・`hako/start_hako.bash`・`hako/check_hako.bash`・`check_env.bash` |
+| humanoid（工場デモ）: `factory_demo\setup_python.ps1`・`hako\setup_hako.ps1`・`hako\start_hako.ps1`・`hako\check_hako.ps1`・`check_env.ps1` | `factory_demo/setup_python.bash`・`hako/setup_hako.bash`・`hako/start_hako.bash`・`hako/check_hako.bash`・`check_env.bash` |
+| humanoid（C++ プラント）: `build.ps1`・`stage_godot_addon.ps1`・`verify.ps1`・`demo.ps1` | `build.bash`（ビルド先 `mujoco_plant/build-linux`）・`stage_godot_addon.bash`・`verify.bash`・`demo.bash` |
 
-- 中で動く Python（cobot の `tools/run_cell.py`、armpi の `tools/windows/run_demo.py`、hakoniwa-godot-robot の `devai_hako/start_hako.py`・`run_probe.py`）は Windows と共通です。OS を見て SDK の場所・実行ファイル名・共有メモリの場所を切り替えます。
+- 中で動く Python（cobot の `tools/run_cell.py`、armpi の `tools/windows/run_demo.py`、humanoid の `tools/run_check.py`、hakoniwa-godot-robot の `devai_hako/start_hako.py`・`run_probe.py`）は Windows と共通です。OS を見て SDK の場所・実行ファイル名・共有メモリの場所を切り替えます。
 - humanoid の場所の設定は、既定で作業場所からの相対です（Windows の `config.local.ps1` にあたるものは要らない）。変えるときだけ `factory_demo/config.local.bash`（例は `config.example.bash`）。
 - Ubuntu の python3 にはシステムに pip で入れられない（PEP 668）ので、humanoid は動画版・UDP 版・箱庭版とも `devai_robo/sdk/linux-gcc-x64/python-venv` を使います。
-- armpi のルートにある `build-armpi-sim.bash`・`run-demo*.bash`、humanoid のルートの `build-humanoid-sim.bash` などは旧 SDK（`/usr/local/hakoniwa`）向けの別の流れです。ここでは使いません。
+- armpi のルートにある `build-armpi-sim.bash`・`run-demo*.bash` は旧 SDK（`/usr/local/hakoniwa`）向けの別の流れです。ここでは使いません（humanoid の旧スクリプトは 2026-11-14 に削除）。
+- どのロボットも、箱庭の時間は外の実時間マスタ（`hako-realtime-master`）が壁時計に合わせて進めます（PLANT には `HAKO_EXTERNAL_MASTER=1` を渡し、プロセス内の conductor は起動しない）。
 
 ### 4.2 cobot と NC 加工機の連携を Godot で見る
 

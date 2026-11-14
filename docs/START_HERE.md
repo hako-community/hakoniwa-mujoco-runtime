@@ -58,7 +58,7 @@ powershell -ExecutionPolicy Bypass -File hakoniwa-mujoco-runtime\tools\windows\s
 | W3 | 各リポジトリの `deps.lock` の版で runtime・sensor を確かめる（`tools\fetch_deps.py`） | ✓ | ✓ | 数秒 |
 | W4 | **箱庭コア**を `<作業場所>\third_party` に取る（`tools\hako_core\fetch_third_party.py`。§5） | ✓ | ✓ | 1 分 |
 | W5 | SDK を作る | `devai_robo`（`robo_sdk\setup_robo_sdk.ps1`） | `devai_drone`（drone の `tools\local_sdk\setup_windows.ps1`） | ロボット 約 1〜1.5 時間・ドローン 約 10 分 |
-| W6 | ロボットごとの準備 | humanoid: 設定 `config.local.ps1` を作り、Python・venv・Godot addon／cobot・armpi: venv・ビルド・addon | — | 各 数分 |
+| W6 | ロボットごとの準備 | humanoid: 設定 `config.local.ps1` を作り、Python・venv・Godot addon・C++ プラントのビルド／cobot・armpi: venv・ビルド・addon | — | 各 数分 |
 | W7 | 確認と「次に動かすコマンド」 | SDK の確認（箱庭コアの版も）・humanoid の環境確認 | `-Test` で ctest（約 25 分） | |
 
 | オプション | 意味 |
@@ -81,6 +81,8 @@ powershell -ExecutionPolicy Bypass -File hakoniwa-mujoco-runtime\tools\windows\s
 |---|---|---|
 | humanoid（展示会の箱庭版ライブ） | `hakoniwa-humanoid\scripts\windows\factory_demo\hako\start_hako.bat` | Godot に工場。A/B/C を切り替え・攻撃開始ができる。手順書 06 |
 | humanoid（Godot なしの確認） | `…\factory_demo\hako\check_hako.ps1 -Scenario rezot` | 4/4 台が搬送を続け、実時間比 約 1.0 |
+| humanoid（C++ プラントの確認） | `hakoniwa-humanoid\scripts\windows\verify.ps1` | 歩行・センサ・変換・決定論・ビューアなど 8 項目が全部 合格（`logs\run_check.json`） |
+| humanoid（歩行デモ） | `hakoniwa-humanoid\scripts\windows\demo.ps1`（`-Mode ab`・`-NoViewer`） | Godot で HumanoidD04 が歩く |
 | cobot（Godot で見る） | `hakoniwa-cobot\scripts\windows\demo.ps1`（§4.1） | Godot にセル。ロボットがワークをつかんで置く |
 | cobot（NC 加工機と連携・Godot で見る） | `hakoniwa-cobot\tools\run_cell.py --scenario tending --viewer`（§4.2。`-WithNcMachine` で建てたとき） | Godot に加工機とロボット。ワークの装着・加工・取り出しを繰り返す |
 | cobot（自動の確かめ） | `hakoniwa-cobot\scripts\windows\verify_all.ps1` | 全部 合格 |
