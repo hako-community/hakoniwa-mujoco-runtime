@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <chrono>
+#include <cstdlib>
+#include <string>
 #include <thread>
 #include <utility>
 
@@ -103,8 +105,16 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAssetInternal(
     callbacks_.on_reset = StaticOnReset;
     active_instance_ = this;
 
-    hako_conductor_start(config_.delta_time_usec, config_.conductor_cycle_usec);
-    conductor_started_.store(true);
+    // 時間を進めるもの: 既定はプロセス内の conductor（壁時計に合わせない。sleep の精度しだいで実時間の何倍にもなる）。
+    // HAKO_EXTERNAL_MASTER=1 のときは conductor を起動せず、外のマスタ（hako-realtime-master。壁時計に合わせて進める）に任せる。
+    // 両方を動かすと時間が二重に進むので、外のマスタを使う起動スクリプトは必ずこの環境変数を付ける。
+    if (UseExternalMaster()) {
+        std::cout << "[INFO] time master: external (HAKO_EXTERNAL_MASTER=1, no in-process conductor)" << std::endl;
+    } else {
+        std::cout << "[INFO] time master: in-process conductor" << std::endl;
+        hako_conductor_start(config_.delta_time_usec, config_.conductor_cycle_usec);
+        conductor_started_.store(true);
+    }
     const int register_result = hako_asset_register(
         config_.asset_name.c_str(),
         config_.pdu_def_path.c_str(),
@@ -140,6 +150,16 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAssetInternal(
         return false;
     }
     return true;
+}
+
+bool HakoniwaAssetLifecycle::UseExternalMaster()
+{
+    const char* value = std::getenv("HAKO_EXTERNAL_MASTER");
+    if (value == nullptr) {
+        return false;
+    }
+    const std::string text(value);
+    return !text.empty() && text != "0";
 }
 
 bool HakoniwaAssetLifecycle::IsReady() const

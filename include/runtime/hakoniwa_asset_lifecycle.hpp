@@ -44,6 +44,8 @@ namespace hako::robots::runtime
             ResetCallback reset = {},
             std::string* error_message = nullptr);
 
+        // 環境変数 HAKO_EXTERNAL_MASTER が 1（0・空以外）なら true。true のときプロセス内の conductor を起動しない。
+        static bool UseExternalMaster();
         bool IsReady() const;
         hakoniwa::pdu::Endpoint& Endpoint();
 
