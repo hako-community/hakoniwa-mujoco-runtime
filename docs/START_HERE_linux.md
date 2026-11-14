@@ -74,7 +74,7 @@ bash hakoniwa-mujoco-runtime/tools/linux/setup_workspace.sh --drone --test      
 |---|---|---|
 | drone | `bash hakoniwa-mujoco-drone/tools/local_sdk/setup_linux.bash run` | Origin-01 ×2 機が飛ぶ（実時間比 約 15x・最終高度 5.2 m） |
 | drone（試験） | `bash hakoniwa-mujoco-drone/tools/local_sdk/setup_linux.bash test` | drone 97 本・companion 32 本（Windows は hil_bridge が無い分 1 本少ない） |
-| Godot（オフライン） | `cd hakoniwa-godot-drone && $GODOT_BIN --path . res://Scenes/drone_1.tscn` | 内蔵 FC（`libhakodrone.so`）でゲームパッド・キーボード操縦 |
+| Godot（オフライン） | `cd hakoniwa-godot-drone && DOTNET_ROOT=$HOME/.dotnet $GODOT_BIN --path . res://Scenes/drone_1.tscn`（`DOTNET_ROOT` が無いと Godot mono は起動時に落ちる） | 内蔵 FC（`libhakodrone.so`）でゲームパッド・キーボード操縦 |
 | Godot（箱庭経由） | `source hakoniwa-mujoco-drone/tools/local_sdk/env_linux.bash` のあとで同じ Godot を起動 | `HAKO_NATIVE_LIB_DIR` が SDK の `libshakoc.so` を指す（プラントと同じ箱庭コア） |
 | 風況デモ | `bash hakoniwa-simenv-4dst/examples/wind_flight_demo/run_wind_flight_demo.sh [--wind \| --live \| --modes]` | 大甕の景観の上を origin01 が飛ぶ（README §2。Windows の `-Wind`・`-Live`・`-Modes` と同じ） |
 

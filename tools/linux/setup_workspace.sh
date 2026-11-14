@@ -188,7 +188,7 @@ printf '\n%s================ 次に動かすコマンド ================%s\n' "
 echo "drone（Origin-01 ×2 機）: bash ${WS}/hakoniwa-mujoco-drone/tools/local_sdk/setup_linux.bash run"
 echo "    試験: bash ${WS}/hakoniwa-mujoco-drone/tools/local_sdk/setup_linux.bash test"
 if [[ "${GODOT}" == 1 ]]; then
-  echo "Godot（オフライン・内蔵 FC）: cd ${WS}/hakoniwa-godot-drone && ${GODOT_EXE} --path . res://Scenes/drone_1.tscn"
+  echo "Godot（オフライン・内蔵 FC）: cd ${WS}/hakoniwa-godot-drone && DOTNET_ROOT=${DOTNET_ROOT} ${GODOT_EXE} --path . res://Scenes/drone_1.tscn"
   echo "    箱庭経由: source ${WS}/hakoniwa-mujoco-drone/tools/local_sdk/env_linux.bash して同じ Godot を起動（HAKO_NATIVE_LIB_DIR が SDK の shakoc を指す）"
 fi
 if [[ "${WIND}" == 1 ]]; then
