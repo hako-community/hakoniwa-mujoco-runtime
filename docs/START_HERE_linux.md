@@ -131,7 +131,7 @@ Windows の `tools\windows\robo_sdk`（S0〜S5）と同じ段を、`tools/linux/
 - 中で動く Python（cobot の `tools/run_cell.py`、armpi の `tools/windows/run_demo.py`、humanoid の `tools/run_check.py`、hakoniwa-godot-robot の `devai_hako/start_hako.py`・`run_probe.py`）は Windows と共通です。OS を見て SDK の場所・実行ファイル名・共有メモリの場所を切り替えます。
 - humanoid の場所の設定は、既定で作業場所からの相対です（Windows の `config.local.ps1` にあたるものは要らない）。変えるときだけ `factory_demo/config.local.bash`（例は `config.example.bash`）。
 - Ubuntu の python3 にはシステムに pip で入れられない（PEP 668）ので、humanoid は動画版・UDP 版・箱庭版とも `devai_robo/sdk/linux-gcc-x64/python-venv` を使います。
-- armpi のルートにある `build-armpi-sim.bash`・`run-demo*.bash` は旧 SDK（`/usr/local/hakoniwa`）向けの別の流れです。ここでは使いません（humanoid の旧スクリプトは 2026-11-14 に削除）。
+- armpi のリポジトリ直下の展示・確認用の bash（`verify-*.bash`・品質ゲート・サイバー攻撃デモ・ショーリール・録画。Linux 専用）も、`scripts/linux/hako_env.bash` を読んで今の SDK で動きます（一覧は armpi の README）。旧 SDK（`/usr/local/hakoniwa`）のまま残っているのは、実機ボード連携の `endpoint/*` と、そのプラントを作る `build-armpi-sim.bash` だけです（humanoid の旧スクリプトは 2026-11-14 に削除）。
 - どのロボットも、箱庭の時間は外の実時間マスタ（`hako-realtime-master`）が壁時計に合わせて進めます（PLANT には `HAKO_EXTERNAL_MASTER=1` を渡し、プロセス内の conductor は起動しない）。
 
 ### 4.2 cobot と NC 加工機の連携を Godot で見る
