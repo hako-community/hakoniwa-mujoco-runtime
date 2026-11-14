@@ -105,9 +105,10 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAssetInternal(
     callbacks_.on_reset = StaticOnReset;
     active_instance_ = this;
 
-    // 時間を進めるもの: 既定はプロセス内の conductor（壁時計に合わせない。sleep の精度しだいで実時間の何倍にもなる）。
-    // HAKO_EXTERNAL_MASTER=1 のときは conductor を起動せず、外のマスタ（hako-realtime-master。壁時計に合わせて進める）に任せる。
-    // 両方を動かすと時間が二重に進むので、外のマスタを使う起動スクリプトは必ずこの環境変数を付ける。
+    // Who advances the simulation time:
+    // - default: the in-process conductor (not paced to the wall clock; the speed depends on sleep precision).
+    // - HAKO_EXTERNAL_MASTER=1: no conductor here; an external master (hako-realtime-master) paces time to the wall clock.
+    // Running both advances time twice, so launchers that start the external master must set this variable.
     if (UseExternalMaster()) {
         std::cout << "[INFO] time master: external (HAKO_EXTERNAL_MASTER=1, no in-process conductor)" << std::endl;
     } else {
