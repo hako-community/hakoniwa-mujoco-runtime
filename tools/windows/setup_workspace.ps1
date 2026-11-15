@@ -168,7 +168,13 @@ if ($From -le 1) {
     $vsd = Find-VsDevCmd
     if ($vsd) { Write-Host "[ok] Visual Studio 2022: $vsd" -ForegroundColor Green }
     else { Write-Host "[NG] Visual Studio 2022（C++ によるデスクトップ開発）が見つからない" -ForegroundColor Red; $ng++ }
-    if (Test-Path $Godot) { Write-Host "[ok] Godot: $Godot" -ForegroundColor Green }
+    if (Test-Path $Godot -PathType Leaf) { Write-Host "[ok] Godot: $Godot" -ForegroundColor Green }
+    elseif (Test-Path $Godot -PathType Container) {
+        # 通常版の zip を展開すると Godot_v4.7.1-stable_win64.exe という名前のフォルダができ、exe はその中にある
+        $inner = Get-ChildItem -Path $Godot -Filter "Godot_v*.exe" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike "*_console.exe" } | Select-Object -First 1
+        $hint = if ($inner) { "中の exe を -Godot に: $($inner.FullName)" } else { "Godot の exe を -Godot に" }
+        Write-Host "[NG] Godot がフォルダを指している: $Godot（$hint）" -ForegroundColor Red; $ng++
+    }
     else { Write-Host "[--] Godot が無い: $Godot（ビューアを使うときに要る。-Godot か環境変数 GODOT_EXE）" -ForegroundColor Yellow; $warn.Add("Godot が無い") }
     $lp = (& git config --global core.longpaths) 2>$null
     if ($lp -ne "true") { Write-Host "[--] git の core.longpaths が true でない（git config --global core.longpaths true）" -ForegroundColor Yellow; $warn.Add("core.longpaths") }
@@ -323,9 +329,15 @@ if ($Robot) {
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RoboSdk "check_robo_sdk.ps1") -Robo $Robo
     if ($LASTEXITCODE -ne 0) { $ok = $false }
     if ($Robot -contains "humanoid") {
-        $env:FACTORY_DEMO_ROBO_ROOT = $Robo
-        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Workspace "hakoniwa-humanoid\scripts\windows\factory_demo\check_env.ps1")
-        if ($LASTEXITCODE -ne 0) { $ok = $false }
+        $fd = Join-Path $Workspace "hakoniwa-humanoid\scripts\windows\factory_demo"
+        if (Test-Path (Join-Path $fd "config.local.ps1")) {
+            $env:FACTORY_DEMO_ROBO_ROOT = $Robo
+            & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $fd "check_env.ps1")
+            if ($LASTEXITCODE -ne 0) { $ok = $false }
+        } else {
+            # config.local.ps1 は W6 で作る。無いうちに確かめると見本（D:\work_build 前提）の場所を見て NG が並ぶだけなので飛ばす
+            Write-Host "[--] humanoid の工場デモの確認（check_env）は飛ばす: config.local.ps1 がまだ無い（W6 で作る）" -ForegroundColor Yellow
+        }
     }
 } else {
     if ($Test -and -not $Check) {
