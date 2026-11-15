@@ -4,6 +4,8 @@ armpi・humanoid・cobot（ロボット。cobot は NC 加工機との連携も�
 **新しい Linux（Ubuntu 24.04・x86_64）の PC** に建てるときの入口です。Windows 版の [START_HERE.md](START_HERE.md) と同じ段（W1〜W7）を、
 1 本のスクリプト **`tools/linux/setup_workspace.sh`** で行います。
 
+> **既に建てた作業場所を最新に合わせるとき**は [UPDATE_HERE_linux.md](UPDATE_HERE_linux.md)（pull してから同じスクリプトを `--from 3` で）。
+
 ```mermaid
 flowchart LR
     A["1. ツールを入れる<br/>（手で。初回だけ）"] --> B["2. runtime を clone"]
