@@ -21,8 +21,8 @@ flowchart LR
 | vcpkg の初期化に要る道具 | | `sudo apt install zip unzip tar pkg-config` | ✓ | |
 | GLFW・OpenGL | Ubuntu の 3.3.10 | `sudo apt install libglfw3-dev libgl-dev`（プラントの確認用の窓。Windows は vcpkg の 3.5.1） | ✓ | |
 | GitHub CLI | 2.x | `sudo apt install gh` → `gh auth login`（非公開の hakoniwa-godot-robot・hakoniwa-ncmachine、ドローンの Release） | humanoid・加工機 | `--godot`・`--wind` |
-| Godot | **4.7.1 mono**（Linux x86_64） | 既定の場所 `/usr/local/bin/Godot_v4.7.1-stable_mono_linux_x86_64/`（別の場所なら `--godot <実行ファイル>` か `GODOT_EXE`） | ビューア | `--godot`・`--wind` |
-| .NET SDK | **8.0** | `dotnet-install.sh --channel 8.0` で `~/.dotnet` に（別の場所なら `DOTNET_ROOT`。無いと Godot mono は起動時に落ちる） | ビューア | `--godot`・`--wind` |
+| Godot | **4.7.1**（Linux x86_64） | ロボットは通常版で可（mono 版でも動く）、ドローンは **mono 版**（ビューアが C#）。既定の場所 `/usr/local/bin/Godot_v4.7.1-stable_mono_linux_x86_64/`（別の場所なら `--godot <実行ファイル>` か `GODOT_EXE`） | ビューア | `--godot`・`--wind` |
+| .NET SDK | **8.0** | Godot を mono 版にするときだけ。`dotnet-install.sh --channel 8.0` で `~/.dotnet` に（別の場所なら `DOTNET_ROOT`。無いと Godot mono は起動時に落ちる） | mono 版のとき | `--godot`・`--wind` |
 | Blender | 5.2 | 加工機のモデルの GLB（`--with-ncmachine`）。既定 `/usr/local/bin/blender-5.2*/blender`（`--blender <exe>` か `BLENDER_EXE`）。無ければ GLB なしで作る | 加工機 | |
 | git-lfs | 3.x | `sudo apt install git-lfs` | | `--wind` |
 | ディスク | | ロボット 約 6 GB・ドローン 約 3 GB・風況デモ ＋約 1.5 GB | | |
@@ -75,7 +75,7 @@ bash hakoniwa-mujoco-runtime/tools/linux/setup_workspace.sh --drone --test      
 | `--rebuild-sdk` | ロボット: SDK の箱庭コアが lock と違うとき、今の SDK を `devai_robo.old-<日時>` に退避して作り直す（箱庭コアがもう lock と同じ作りかけなら、退避せずに続きを作る）。ドローン: SDK・MuJoCo・venv を作り直す |
 | `--sdk-from N` | ロボット SDK の「続き」を setup_robo_sdk の S-N から（例 `--from 5 --sdk-from 5`） |
 | `--robo <場所>` | ロボット共通 SDK の場所（既定 `<作業場所>/devai_robo`。環境変数 `DEVAI_ROBO`） |
-| `--godot <exe>` | Godot 4.7.1 mono の実行ファイル |
+| `--godot <exe>` | Godot 4.7.1 の実行ファイル（ロボットは通常版で可、ドローンは mono 版） |
 | `--with-ncmachine` | cobot を加工機と連携する形で（hakoniwa-ncmachine・image2sim-framework も clone し、加工機のモデルを作る。§4.2） |
 | `--blender <exe>` | 加工機のモデルの GLB を作る Blender 5.2 |
 | `--wind`・`--test` | ドローンの風況デモ・ctest |

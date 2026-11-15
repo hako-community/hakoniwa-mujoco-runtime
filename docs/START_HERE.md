@@ -22,7 +22,7 @@ flowchart LR
 | CMake | 3.21 以上 | PATH に置く |
 | Git | 2.x | PATH に置く。`git config --global core.longpaths true` |
 | Python | **3.12（64 ビット）** | python.org 版を既定の場所（`%LOCALAPPDATA%\Programs\Python\Python312`）に |
-| Godot | **4.7.1 mono** | ビューア・ライブで使う。既定 `D:\Godot_v4.7.1-stable_mono_win64\`（別の場所なら `-Godot <exe>`） |
+| Godot | **4.7.1** | ビューア・ライブで使う。ロボットは通常版で可（mono 版でも動く。GDScript と GDExtension だけ）、ドローンは **mono 版**（ビューアが C#）。既定 `D:\Godot_v4.7.1-stable_mono_win64\`（別の場所なら `-Godot <exe>`）。同じフォルダの `_console.exe` も使う（無ければ GUI 版で動くが、ログがコンソールに出ない） |
 | ディスク | ロボット 約 5 GB・ドローン 約 3 GB | |
 
 - **作業場所は浅いところ**に（例 `D:\work_build`）。長いパスで失敗することがあります。

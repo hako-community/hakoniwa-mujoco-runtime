@@ -26,7 +26,7 @@ SDK は 1 台の PC に 1 つあれば、3 つのロボットで共用できま�
 | CMake | 3.21 以上 | PATH に置く（`cmake --version` が動くこと） |
 | Git | 2.x | PATH に置く。長いパスを使うので `git config --global core.longpaths true` |
 | Python | **3.12（64 ビット）** | python.org 版を `%LOCALAPPDATA%\Programs\Python\Python312` に入れる。`python3`（ストアのエイリアス）は使わない。箱庭の `hakopy.pyd` は 3.12 専用 |
-| Godot | **4.7.1（mono 版）** | ビューアを使うとき。例 `D:\Godot_v4.7.1-stable_mono_win64\`（同じフォルダの `_console.exe` も使う） |
+| Godot | **4.7.1**（通常版で可。mono 版でも動く） | ビューアを使うとき。ロボットは GDScript と GDExtension だけなので .NET は要らない。例 `D:\Godot_v4.7.1-stable_mono_win64\`（同じフォルダの `_console.exe` も使う） |
 | ディスク | 約 5 GB | SDK（vcpkg・ビルド木を含む）約 3.5 GB ＋ リポジトリ |
 
 - 社内ネットワークでプロキシが要るときは、`HTTP_PROXY`・`HTTPS_PROXY` を設定してから始めます。
