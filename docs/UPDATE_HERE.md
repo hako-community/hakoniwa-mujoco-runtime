@@ -141,6 +141,8 @@ powershell -ExecutionPolicy Bypass -File hakoniwa-armpi\scripts\windows\run_demo
 
 ドローンは別の作業場所（例 `D:\work_drone\work_git`）です。流れは同じで、pull するリポジトリとオプションが違います。
 
+> 下の手順を 1 本で行うスクリプトもあります: `pwsh hakoniwa-mujoco-drone\tools\local_sdk\update_workspace.ps1`（pull → runtime・sensor を `deps.lock` の版に → 箱庭コアが違えば取り直し・SDK だけ作り直し → ビルド → hakodrone。`--check` で見るだけ。drone の [docs/manual/13_update.md](../../hakoniwa-mujoco-drone/docs/manual/13_update.md)）。
+
 ```powershell
 cd D:\work_drone\work_git
 foreach ($r in "hakoniwa-mujoco-drone","hakoniwa-drone-companion") { git -C $r pull --ff-only }

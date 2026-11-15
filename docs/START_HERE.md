@@ -7,6 +7,7 @@ armpi・humanoid・cobot（ロボット）と hakoniwa-mujoco-drone・companion�
 > **Linux（Ubuntu 24.04）でロボット・ドローンを建てるとき**は [START_HERE_linux.md](START_HERE_linux.md)（`tools/linux/setup_workspace.sh --robot …` / `--drone`。段は同じ W1〜W7）。
 >
 > **既に建てた作業場所を最新に合わせるとき**は [UPDATE_HERE.md](UPDATE_HERE.md)（pull してから同じスクリプトを `-From 3` で）。
+> ドローンの作業場所は 1 本で更新するスクリプトもあります: `pwsh hakoniwa-mujoco-drone\tools\local_sdk\update_workspace.ps1`（`--check` で見るだけ。drone の [docs/manual/13_update.md](../../hakoniwa-mujoco-drone/docs/manual/13_update.md)）。
 
 ```mermaid
 flowchart LR
