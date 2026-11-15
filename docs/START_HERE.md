@@ -30,7 +30,7 @@ flowchart LR
 
 - **作業場所は浅いところ**に（例 `D:\work_build`）。長いパスで失敗することがあります。
 - **ロボットとドローンは別の作業場所**に建てます（例 ロボット `D:\work_build`、ドローン `D:\work_drone\work_git`）。理由は §5。
-- プロキシの内側なら `HTTP_PROXY`・`HTTPS_PROXY` を先に設定します（展示会の PC＝テザリングでは要りません）。
+- プロキシの内側なら `HTTP_PROXY`・`HTTPS_PROXY` を先に設定し（どちらも `http://` で始める）、`-VcpkgCurl` を付けます（§7 の「プロキシの内側で W5 が止まる」。展示会の PC＝テザリングでは要りません）。
 
 ## 2. runtime を clone する
 
@@ -75,6 +75,7 @@ powershell -ExecutionPolicy Bypass -File hakoniwa-mujoco-runtime\tools\windows\s
 | `-WithNcMachine` | cobot を加工機と連携する形で（hakoniwa-ncmachine・image2sim-framework も clone し、加工機のモデルを作る。§4.2） |
 | `-Blender <exe>` | 加工機のモデルの GLB を作る Blender 5.2（既定: `BLENDER_EXE`、無ければ Program Files・PATH） |
 | `-Test` | ドローンの ctest も流す |
+| `-VcpkgCurl` | プロキシの内側の PC 向け。W5 の vcpkg の初期化とダウンロードを Windows の `curl.exe` で行う。一度これで作り始めた SDK は、次から付けなくても curl を使う（§7） |
 
 ## 4. 動かす
 
@@ -237,5 +238,28 @@ flowchart TB
 | W4 で `third_party の版が lock と違う` | `python hakoniwa-mujoco-runtime\tools\hako_core\fetch_third_party.py --refresh`（今のものは退避。中身は触らない） |
 | W5 で `SDK が lock と違う` | `-RebuildSdk`（今の SDK は退避）。ロボットの SDK を作り直したら W6 もやり直す（スクリプトが続けて行う） |
 | W5 で `退避が途中です` | SDK のフォルダごとの名前の変更が拒否され（**作業場所を VS Code で開いている**と、そのファイル監視で必ず拒否される。ほかに Godot・エクスプローラー・ウイルス対策など）、中身を 1 つずつ移している途中で、使用中のファイルで止まった。止めたものを閉じて同じコマンドをもう一度（退避先の `_MOVE_INCOMPLETE.txt` を見て続きを移す） |
-| W5 の途中（S1〜S5 のどこか）で止まった | 原因を直して `-From 5 -SdkFrom <止まった S の番号>`。SDK の箱庭コアがもう lock と同じなら、退避せずに続きから作る（`-RebuildSdk` を付けたままでよい） |
+| W5 の途中（S1〜S5 のどこか）で止まった | 原因を直して `-From 5 -SdkFrom <止まった S の番号>`。SDK の箱庭コアがもう lock と同じなら、退避せずに続きから作る（`-RebuildSdk` を付けたままでよい）。S1 で箱庭コアができる前に止まったときは、`-From 5` で流し直すと作りかけを `sdk\windows-msvc-x64.failed-<日時>` に退避して作り直す |
+| プロキシの内側で W5 が止まる（vcpkg の `curl operation failed with error code 35 (SSL connect error)`。msys2 の `pkgconf` など） | vcpkg が自分のダウンロード機能でプロキシを通れていない。下の「プロキシの内側で SDK を作る」 |
 | `Filename too long` | `git config --global core.longpaths true`。作業場所を浅く |
+
+### プロキシの内側で SDK を作る
+
+`-VcpkgCurl` を付けると、vcpkg のダウンロードを Windows の `curl.exe` で行います（Windows の証明書ストア・`HTTPS_PROXY` を使う）。
+プロキシが証明書の失効の問い合わせ（CRL・OCSP）を通さないと、`curl.exe` も `CRYPT_E_NO_REVOCATION_CHECK` で止まるので、
+その窓の `curl.exe` だけ「失効を確かめられないときは先へ進む」（`ssl-revoke-best-effort`。確かめられるときは確かめる）にします。
+
+```powershell
+# 1. curl.exe で通るか（200 などが返れば 2 へ。返らなければ、そのサイトがプロキシで止められている。情報システムの担当に相談）
+curl.exe -sSI https://repo.msys2.org/
+curl.exe -sSI --ssl-revoke-best-effort https://repo.msys2.org/     # 上が CRYPT_E_NO_REVOCATION_CHECK のとき
+
+# 2. （上の 2 行目で通ったときだけ）この窓の curl.exe に効かせる。窓を閉じると消える
+New-Item -ItemType Directory -Force C:\curlhome | Out-Null
+Set-Content -Encoding ascii C:\curlhome\.curlrc "ssl-revoke-best-effort"
+$env:CURL_HOME = "C:\curlhome"
+
+# 3. 同じ窓で、-VcpkgCurl を付けて W5 から
+powershell -ExecutionPolicy Bypass -File hakoniwa-mujoco-runtime\tools\windows\setup_workspace.ps1 -Robot humanoid,cobot,armpi -From 5 -VcpkgCurl
+```
+
+効いていれば、W5 の初めに `[curl] vcpkg の初期化とダウンロードを curl.exe で行う` と `vcpkg を curl で用意する → <SDK>\vcpkg` が出ます。

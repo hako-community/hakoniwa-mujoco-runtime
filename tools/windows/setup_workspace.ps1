@@ -32,6 +32,10 @@
 #                見つからなければ GLB なしで作る）
 #   -Test      : ドローンの ctest（drone 約 11 分・companion 約 15 分）も流す
 #   -Check     : 何も作らず、W1・W3・W4・W7 の確認だけ
+#   -VcpkgCurl : プロキシの内側の PC 向け。W5 の vcpkg の初期化とダウンロードを Windows の curl.exe で行う（setup_robo_sdk.ps1 -VcpkgCurl）。
+#                一度これで作り始めた SDK（<SDK>\vcpkg_curl.txt がある）は、付けなくても curl を使う。
+#                証明書の失効を確かめられないプロキシ（curl の CRYPT_E_NO_REVOCATION_CHECK）では、先に CURL_HOME の .curlrc に
+#                ssl-revoke-best-effort を書いておく（docs\START_HERE.md §7）
 param(
     [string[]]$Robot = @(),     # humanoid・cobot・armpi（カンマ区切り。-File で呼ぶと 1 つの文字列で届くので分ける）
     [switch]$Drone,
@@ -44,7 +48,8 @@ param(
     [switch]$WithNcMachine,
     [string]$Blender = "",
     [switch]$Test,
-    [switch]$Check
+    [switch]$Check,
+    [switch]$VcpkgCurl
 )
 $ErrorActionPreference = "Stop"
 $Robot = @($Robot | ForEach-Object { $_ -split "[,\s]+" } | Where-Object { $_ } | ForEach-Object { $_.ToLower() })
@@ -229,7 +234,21 @@ if ($From -le 5 -and -not $Check) {
             Write-Host "[退避] 前回の続き: $Robo → $($half.FullName)" -ForegroundColor Yellow
             Move-Aside $Robo $half.FullName
         }
+        # プロキシの内側: vcpkg を curl で（-VcpkgCurl か、前に -VcpkgCurl で作り始めた印 vcpkg_curl.txt があるとき）
+        $sdkArgs = @("-Robo", $Robo)
+        if ($VcpkgCurl -or (Test-Path (Join-Path $Robo "vcpkg_curl.txt"))) {
+            $sdkArgs += "-VcpkgCurl"
+            Write-Host "[curl] vcpkg の初期化とダウンロードを curl.exe で行う（-VcpkgCurl）" -ForegroundColor Yellow
+        }
         $core = Join-Path $Robo "sdk\windows-msvc-x64\sdk\hakoniwa-core"
+        $sdkOut = Join-Path $Robo "sdk\windows-msvc-x64"
+        if (-not (Test-Path $core) -and (Test-Path $sdkOut)) {
+            # S1 が途中で止まった出力（箱庭コアがまだ無い）。SDK のビルダーは新しい出力先にしか作らないので、退避してから作り直す
+            # （消さない。vcpkg で作った Boost・GLFW はバイナリキャッシュに残るので、やり直しは速い）
+            $failed = "$sdkOut.failed-" + (Get-Date).ToString("yyyyMMdd-HHmmss")
+            Write-Host "[退避] 作りかけの SDK（箱庭コアがまだ無い）: $sdkOut → $failed（要らなければ消す）" -ForegroundColor Yellow
+            Move-Aside $sdkOut $failed
+        }
         if (Test-Path $core) {
             & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RoboSdk "check_robo_sdk.ps1") -Robo $Robo
             $chk = $LASTEXITCODE
@@ -240,16 +259,16 @@ if ($From -le 5 -and -not $Check) {
             $sdkCore = if (Test-Path $man) { (Get-Content $man -Raw | ConvertFrom-Json).sources.'hakoniwa-core-pro' } else { "" }
             if ($chk -ne 0 -and $sdkCore -eq $lockCore) {
                 Write-Host "[続き] SDK の箱庭コアは lock と同じ。足りないところを作る（setup_robo_sdk.ps1 -From $SdkFrom。退避しない）" -ForegroundColor Yellow
-                Invoke-Ps1 (Join-Path $RoboSdk "setup_robo_sdk.ps1") @("-Robo", $Robo, "-From", "$SdkFrom")
+                Invoke-Ps1 (Join-Path $RoboSdk "setup_robo_sdk.ps1") ($sdkArgs + @("-From", "$SdkFrom"))
             } elseif ($chk -ne 0) {
                 if (-not $RebuildSdk) { throw "W5: SDK が lock と違うか、足りません。作り直すなら -RebuildSdk（今の SDK は退避）か setup_robo_sdk.ps1 -From <番号>" }
                 $old = "$Robo.old-" + (Get-Date).ToString("yyyyMMdd-HHmmss")
                 Write-Host "[退避] $Robo → $old（戻すときは名前を戻す）" -ForegroundColor Yellow
                 Move-Aside $Robo $old
-                Invoke-Ps1 (Join-Path $RoboSdk "setup_robo_sdk.ps1") @("-Robo", $Robo)
+                Invoke-Ps1 (Join-Path $RoboSdk "setup_robo_sdk.ps1") $sdkArgs
             }
         } else {
-            Invoke-Ps1 (Join-Path $RoboSdk "setup_robo_sdk.ps1") @("-Robo", $Robo)
+            Invoke-Ps1 (Join-Path $RoboSdk "setup_robo_sdk.ps1") $sdkArgs
         }
     } else {
         Write-W 5 "ドローンの SDK とビルド（hakoniwa-mujoco-drone\tools\local_sdk\setup_windows.ps1）"
