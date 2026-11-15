@@ -22,7 +22,7 @@
 #
 #   -Workspace : 作業場所（既定: このリポジトリの親）
 #   -Robo      : ロボット共通 SDK の場所（既定: 環境変数 DEVAI_ROBO、無ければ <作業場所>\devai_robo）
-#   -Godot     : Godot 4.7.1 mono の exe（既定: 環境変数 GODOT_EXE、無ければ D:\Godot_v4.7.1-stable_mono_win64\...）
+#   -Godot     : Godot 4.7.1 の exe（ロボットは通常版でよい。ドローンは mono 版）（既定: 環境変数 GODOT_EXE、無ければ D:\Godot_v4.7.1-stable_mono_win64\...）
 #   -RebuildSdk: SDK の箱庭コアが lock と違うとき、今の SDK を <SDK>.old-<日時> に退避して作り直す（ロボット）
 #                箱庭コアがもう lock と同じで一部だけ足りない（作りかけ）なら、退避せずに続きを作る
 #   -SdkFrom N : その「続き」を setup_robo_sdk の S-N から（例 S5 の Godot addon で止まったら -From 5 -SdkFrom 5）
@@ -335,7 +335,7 @@ if ($From -le 6 -and -not $Check -and $Robot) {
                 $w = Join-Path $repo "scripts\windows"
                 Invoke-Ps1 (Join-Path $w "make_venv.ps1") @("-Robo", $Robo)
                 Invoke-Ps1 (Join-Path $w "build.ps1") @("-Robo", $Robo)
-                Invoke-Ps1 (Join-Path $w "stage_godot_addon.ps1") @("-Robo", $Robo)
+                Invoke-Ps1 (Join-Path $w "stage_godot_addon.ps1") @("-Robo", $Robo, "-Godot", $Godot)      # ビューアのアセットの取り込みに Godot を使う
             }
         }
     }
@@ -374,7 +374,7 @@ foreach ($r in $Robot) {
             Write-Host "    自動の確かめ: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-cobot\scripts\windows\verify_all.ps1"
             if ($WithNcMachine) { Write-Host "    NC 加工機との連携（Godot で見る）: docs\START_HERE.md の §4.2" }
         }
-        "armpi"    { Write-Host "armpi: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-armpi\scripts\windows\run_demo.ps1 -Demo motion" }
+        "armpi"    { Write-Host "armpi: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-armpi\scripts\windows\run_demo.ps1 -Demo motion -Godot $Godot" }
     }
 }
 if ($Drone) { Write-Host "drone（Origin-01 ×2 機）: powershell -ExecutionPolicy Bypass -File $Workspace\hakoniwa-mujoco-drone\tools\local_sdk\setup_windows.ps1 run" }
