@@ -78,6 +78,12 @@ function Use-RoboSdkEnv {
         # build_sdk.ps1 -VcpkgCurl で作った SDK: vcpkg のダウンロードを curl で行う（認証付きプロキシ向け）
         $env:X_VCPKG_ASSET_SOURCES = "x-script,$env:SystemRoot\System32\curl.exe -sSL --fail --retry 3 -o {dst} {url}"
     }
+    if (Test-Path (Join-Path $RoboRoot "vcpkg_curl.txt")) {
+        # vcpkg はダウンロードのスクリプトやポートのビルドを、環境変数を絞って動かす（HTTP(S)_PROXY は通すが CURL_HOME は消す）。
+        # CURL_HOME の .curlrc（例 ssl-revoke-best-effort。START_HERE §7）が curl.exe に届くよう、残す変数に足す
+        $keep = @(($env:VCPKG_KEEP_ENV_VARS -split ";") | Where-Object { $_ })
+        if ($keep -notcontains "CURL_HOME") { $env:VCPKG_KEEP_ENV_VARS = (@($keep) + "CURL_HOME") -join ";" }
+    }
     if (Test-Path $env:HAKO_CONFIG_PATH) {
         $env:HAKO_MMAP_DIR = (Get-Content $env:HAKO_CONFIG_PATH -Raw | ConvertFrom-Json).core_mmap_path
         New-Item -ItemType Directory -Force $env:HAKO_MMAP_DIR | Out-Null
