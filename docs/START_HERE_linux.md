@@ -5,6 +5,7 @@ armpi・humanoid・cobot（ロボット。cobot は NC 加工機との連携も�
 1 本のスクリプト **`tools/linux/setup_workspace.sh`** で行います。
 
 > **既に建てた作業場所を最新に合わせるとき**は [UPDATE_HERE_linux.md](UPDATE_HERE_linux.md)（pull してから同じスクリプトを `--from 3` で）。
+> ドローンの作業場所は 1 本で更新するスクリプトもあります: `bash hakoniwa-mujoco-drone/tools/local_sdk/update_workspace.bash`（`--check` で見るだけ。drone の [docs/manual/13_update.md](../../hakoniwa-mujoco-drone/docs/manual/13_update.md)）。
 
 ```mermaid
 flowchart LR

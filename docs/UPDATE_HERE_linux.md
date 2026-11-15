@@ -135,6 +135,8 @@ bash hakoniwa-mujoco-runtime/tools/linux/setup_workspace.sh --robot humanoid,cob
 
 ドローンは別の作業場所（例 `~/work_drone/work_git`）です。流れは同じで、pull するリポジトリとオプションが違います。
 
+> 下の手順を 1 本で行うスクリプトもあります: `bash hakoniwa-mujoco-drone/tools/local_sdk/update_workspace.bash`（pull → runtime・sensor を `deps.lock` の版に → 箱庭コアが違えば取り直し・SDK だけ作り直し → ビルド → hakodrone。`--check` で見るだけ。drone の [docs/manual/13_update.md](../../hakoniwa-mujoco-drone/docs/manual/13_update.md)）。
+
 ```bash
 cd ~/work_drone/work_git
 for r in hakoniwa-mujoco-drone hakoniwa-drone-companion hakoniwa-godot-drone hakoniwa-simenv-4dst hakoniwa-godot-4dst; do
